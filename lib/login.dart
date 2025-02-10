@@ -144,7 +144,7 @@ class _LoginAppState extends State<LoginApp> {
                       ElevatedButton.icon(
                         onPressed: isLoading ? null : signInWithGoogle,
                         icon: Image.network(
-                          'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png',
+                          'https://lh3.googleusercontent.com/COxitqgJr1sJnIDe8-jiKhxDx1FrYbtRHKJ9z_hELisAlapwE9LUPh6fcXIfb5vwpbMl4xl9H9TRFPc5NOO8Sb3VSgIBrfRYvW6cUA',
                           height: 24,
                           width: 24,
                         ),

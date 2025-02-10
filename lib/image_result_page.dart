@@ -188,26 +188,17 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
     try {
       var response = await http.post(url, headers: headers, body: body);
       print("🔍 Response Status Code: ${response.statusCode}");
-      print("📩 Response Body: ${response.body}");
+      print("📩 Raw Response Body: ${response.body}");
 
-      var data = jsonDecode(utf8.decode(response.bodyBytes));
+      // Ensure proper UTF-8 decoding
+      String decodedBody = utf8.decode(response.bodyBytes, allowMalformed: true);
+      print("📩 Decoded Response Body: $decodedBody");
 
-      if (data["status"] == true && data.containsKey("result")) {
-        String extractedText = data["result"];
+      setState(() {
+        _responseText = formatResponseText(decodedBody);
+        _isLoading = false;
+      });
 
-        setState(() {
-          _responseText = extractedText.isNotEmpty
-              ? _formatResponseText(extractedText)
-              : "No relevant data found!";
-          _isLoading = false;
-        });
-      } else {
-        print("❌ API Response Error: ${data["server_code"]}");
-        setState(() {
-          _responseText = "Unexpected response format!";
-          _isLoading = false;
-        });
-      }
     } catch (e) {
       print("⚠️ Error Fetching Data: $e");
       setState(() {
@@ -215,27 +206,10 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
         _isLoading = false;
       });
     }
-  }
+}
 
-  String _formatResponseText(String text) {
-    // Decode UTF-8 characters properly
-    text = utf8.decode(text.runes.toList());
 
-    // Replace unwanted characters
-    text = text.replaceAll("\\n", "\n").trim();
-    text = text.replaceAll(RegExp(r"(?<=\d)\.\s"), ".\n\n");
-    text = text.replaceAll("**", "");
-    text = text.replaceAll("â", "–"); // Replace dashes
-    text = text.replaceAll("â", " "); // Replace spaces
-    text = text.replaceAll("â¢", "•"); // Replace bullet points
-    text = text.replaceAll("â", "\"").replaceAll("â", "\""); // Replace quotes
-    text = text.replaceAll("â¦", "..."); // Replace ellipses
-    text = text.replaceAll("â", "'"); // Replace apostrophes
-
-    return text;
-  }
-
-  @override
+    @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: NestedScrollView(
@@ -308,32 +282,74 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
                     ? Center(child: CircularProgressIndicator(color: Colors.green))
                     : SingleChildScrollView(
                   padding: EdgeInsets.all(16),
-                  child: Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 4,
-                    shadowColor: Colors.green[300],
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Analysis Result",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green[900],
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white.withOpacity(0.1), // Glassmorphic effect
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.3),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                          offset: Offset(2, 4),
+                        )
+                      ],
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    ),
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.insights, color: Colors.green[900], size: 28),
+                            SizedBox(width: 8),
+                            Text(
+                              "Analysis Result",
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                foreground: Paint()
+                                  ..shader = LinearGradient(
+                                    colors: [Colors.green[800]!, Colors.teal[300]!],
+                                  ).createShader(Rect.fromLTWH(0, 0, 200, 50)),
+                              ),
                             ),
-                          ),
-                          Divider(color: Colors.green[700], thickness: 1),
-                          SizedBox(height: 10),
-                          Text(
+                          ],
+                        ),
+                        Divider(color: Colors.green[700], thickness: 1.5),
+                        SizedBox(height: 10),
+                        AnimatedOpacity(
+                          duration: Duration(milliseconds: 800),
+                          opacity: 1.0,
+                          child: Text(
                             _responseText,
-                            style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.5),
+                            style: TextStyle(
+                              fontSize: 17,
+                              color: Colors.black87,
+                              height: 1.6,
+                              fontWeight: FontWeight.w500,
+                            ),
                             textAlign: TextAlign.justify,
                           ),
-                        ],
-                      ),
+                        ),
+                        SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Icon(Icons.eco, color: Colors.green[700], size: 24),
+                            SizedBox(width: 4),
+                            Text(
+                              "Eco-Friendly Insights",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green[800],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -343,5 +359,44 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
         ),
       ),
     );
+  }
+
+  String formatResponseText(String responseBody) {
+    try {
+      var decodedJson = jsonDecode(responseBody);
+
+      if (decodedJson is Map<String, dynamic> && decodedJson.containsKey("result")) {
+        String text = decodedJson["result"];
+
+        // Define a replacement map for fixing encoding issues
+        final Map<String, String> replacements = {
+          "â": "–", // En dash
+          "â": " ", // Space
+          "â¢": "•", // Bullet point
+          "â": "\"", "â": "\"", // Double quotes
+          "â¦": "...", // Ellipsis
+          "â": "'", // Apostrophe
+          "â": "-", // Horizontal line
+          "â": "_", // Underscore
+          "â¢": "™", // Trademark symbol
+          "â": "✔", // Checkmark
+        };
+
+        // Apply replacements
+        replacements.forEach((key, value) {
+          text = text.replaceAll(key, value);
+        });
+
+        // Improve readability with formatting
+        text = text.replaceAll("\\n", "\n").trim();
+        text = text.replaceAll(RegExp(r"(?<=\d)\.\s"), ".\n\n");
+
+        return text;
+      } else {
+        return "Invalid response format!";
+      }
+    } catch (e) {
+      return "⚠️ Error Decoding Data: $e";
+    }
   }
 }

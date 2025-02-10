@@ -91,7 +91,7 @@ class OnboardingCarousel extends StatelessWidget {
 
   final List<Map<String, String>> slides = [
     {
-      'image': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0XoOoDcb9553iWGKmA33FElfzE6uhTzA9k0LnIhCDwRctXL5hrCBnuwK4GXdCc-Tq2mc&usqp=CAU',
+      'image': 'https://images.aiscribbles.com/c9ed99ddf71e4ddea8c75d54ac371726.jpg?v=f428f2',
       'quote': "“Breathe in nature, breathe out stress.”",
     },
     {
@@ -109,7 +109,8 @@ class OnboardingCarousel extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          CarouselSlider(
+          // Carousel Slider with animations
+          CarouselSlider.builder(
             options: CarouselOptions(
               height: MediaQuery.of(context).size.height,
               viewportFraction: 1.0,
@@ -118,8 +119,10 @@ class OnboardingCarousel extends StatelessWidget {
               autoPlayAnimationDuration: Duration(milliseconds: 800),
               autoPlayCurve: Curves.easeInOut,
               enableInfiniteScroll: true,
+              enlargeCenterPage: true,
             ),
-            items: slides.map((slide) {
+            itemCount: slides.length,
+            itemBuilder: (context, index, realIndex) {
               return Stack(
                 fit: StackFit.expand,
                 children: [
@@ -127,48 +130,61 @@ class OnboardingCarousel extends StatelessWidget {
                   Container(
                     decoration: BoxDecoration(
                       image: DecorationImage(
-                        image: NetworkImage(slide['image']!),
+                        image: NetworkImage(slides[index]['image']!),
                         fit: BoxFit.cover,
                       ),
                     ),
                   ),
-                  // Overlay for better readability
+                  // Gradient Overlay for better contrast
                   Container(
-                    color: Colors.black.withOpacity(0.4),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.black.withOpacity(0.3),
+                          Colors.black.withOpacity(0.7),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
                   ),
-                  // Quote Text
+                  // Quote Text with fade-in animation
                   Positioned(
                     bottom: 100,
                     left: 20,
                     right: 20,
                     child: Column(
                       children: [
-                        Text(
-                          slide['quote']!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                blurRadius: 10.0,
-                                color: Colors.black54,
-                                offset: Offset(2, 2),
-                              ),
-                            ],
+                        AnimatedOpacity(
+                          opacity: 1.0,
+                          duration: Duration(milliseconds: 800),
+                          child: Text(
+                            slides[index]['quote']!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              fontFamily: 'Montserrat',
+                              shadows: [
+                                Shadow(
+                                  blurRadius: 8.0,
+                                  color: Colors.black38,
+                                  offset: Offset(1, 2),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        SizedBox(height: 20),
                       ],
                     ),
                   ),
                 ],
               );
-            }).toList(),
+            },
           ),
 
-          // "Skip" Button with animated effect
+          // Skip Button - Styled for better UX
           Positioned(
             top: 50,
             right: 20,
@@ -177,14 +193,44 @@ class OnboardingCarousel extends StatelessWidget {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: Colors.white.withOpacity(0.8),
                   borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 5,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Text(
                   "Skip",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Colors.black87,
                     fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Dots Indicator
+          Positioned(
+            bottom: 30,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                slides.length,
+                    (index) => Container(
+                  margin: EdgeInsets.symmetric(horizontal: 4),
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.8),
                   ),
                 ),
               ),
@@ -195,6 +241,7 @@ class OnboardingCarousel extends StatelessWidget {
     );
   }
 }
+
 
 class UserHomePage extends StatelessWidget {
   @override

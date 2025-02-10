@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'wellness_page.dart'; // Import the Wellness Page
-
 class HomePage extends StatelessWidget {
   final User user;
   HomePage({required this.user});
@@ -10,7 +9,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true, // Makes the app bar float over the background
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -33,13 +32,13 @@ class HomePage extends StatelessWidget {
           // Full-Screen Background Image
           Positioned.fill(
             child: Image.network(
-              'https://st4.depositphotos.com/9999814/21851/i/380/depositphotos_218510554-stock-photo-green-forest-background-morning-sunrise.jpg',
+              'https://images.unsplash.com/photo-1562683407-043a7eafceb6?q=80&w=2080&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
               fit: BoxFit.cover,
             ),
           ),
           Positioned.fill(
             child: Container(
-              color: Colors.white.withOpacity(0.3), // Adjust transparency as needed
+              color: Colors.white.withOpacity(0.1), // Adjust transparency as needed
             ),
           ),
           Container(
@@ -55,7 +54,6 @@ class HomePage extends StatelessWidget {
               if (!snapshot.hasData || snapshot.data == null) {
                 return Center(child: Text("No user data found!", style: TextStyle(color: Colors.white)));
               }
-
               return SingleChildScrollView(
                 child: Column(
                   children: [
@@ -79,12 +77,12 @@ class HomePage extends StatelessWidget {
                     SizedBox(height: 15),
                     Text(
                       "Saving Earth, One Step at a Time",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
                       textAlign: TextAlign.center,
                     ),
                     Text(
                       "Take a step today towards a greener future 🌿🌍",
-                      style: TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 20),
@@ -136,8 +134,21 @@ class HomePage extends StatelessWidget {
               MaterialPageRoute(builder: (context) => WellnessPage()),
             );
           }
+          if (title == "Eco-Friendly Tips") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => WellnessPage()),
+            );
+          }
+          if (title == "Daily Green Challenge") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => WellnessPage()),
+            );
+          }
         },
       ),
     );
   }
 }
+
