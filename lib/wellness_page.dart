@@ -26,31 +26,44 @@ class _WellnessPageState extends State<WellnessPage> {
   }
   Future<String?> _fetchAPIKey() async {
     try {
+      print("🔄 Fetching API Keys from Firestore...");
+
+      // Fetch API keys from Firestore
       DocumentSnapshot<Map<String, dynamic>> doc = await FirebaseFirestore.instance
-          .collection("company") // Adjust if needed
-          .doc("G1HhRecZtrfP72rxEdTI")
+          .collection("company")
+          .doc("G1HhRecZtrfP72rxEdTI") // Adjust document ID if needed
           .get();
 
       if (doc.exists && doc.data() != null && doc.data()!.containsKey("api")) {
-        List<dynamic> apiKeys = doc.data()!["api"];
+        List<String> apiKeys = List<String>.from(doc.data()!["api"]); // 🔹 Convert to List<String>
 
         if (apiKeys.isEmpty) {
-          print("No API keys available in Firestore.");
+          print("❌ No API keys available in Firestore.");
           return null;
         }
 
         for (String key in apiKeys) {
+          print("🔍 Testing API Key: $key");
+
           bool success = await _testAPIKey(key);
-          if (success) return key; // ✅ Use the first successful API key
+          if (success) {
+            print("✅ Found a working API Key: $key");
+            return key; // ✅ Return the first valid key
+          }
         }
+
+        print("❌ No valid API keys found!");
+        return null;
       } else {
-        print("API Key array not found in Firestore!");
+        print("❌ API Key array not found in Firestore!");
       }
     } catch (e) {
-      print("Error fetching API Key: $e");
+      print("⚠️ Error fetching API Key: $e");
     }
+
     return null; // Return null if all keys fail
   }
+
   Future<bool> _testAPIKey(String apiKey) async {
     try {
       var url = Uri.parse("https://label-image.p.rapidapi.com/detect-label");
@@ -59,13 +72,13 @@ class _WellnessPageState extends State<WellnessPage> {
         "Content-Type": "application/json"
       });
 
-      if (response.statusCode == 200) {
-        return true; // ✅ Key works, use it
-      }
+      print("🔍 Response for $apiKey: ${response.statusCode}");
+
+      return response.statusCode == 200; // ✅ Return true if valid
     } catch (e) {
-      print("Error testing API Key: $e");
+      print("⚠️ Error testing API Key: $e");
     }
-    return false; // ❌ Key failed, try next one
+    return false; // ❌ Return false if failed
   }
 
   Future<void> _fetchImageDescription(File image) async {

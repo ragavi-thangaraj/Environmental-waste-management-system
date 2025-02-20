@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'wellness_page.dart'; // Import the Wellness Page
+import 'ShowTime.dart';
 class HomePage extends StatelessWidget {
   final User user;
   HomePage({required this.user});
@@ -14,9 +15,9 @@ class HomePage extends StatelessWidget {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.home, color: Colors.white), // White house icon
-            SizedBox(width: 8), // Spacing between icon and text
-            Text("Our Home", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            Icon(Icons.home, color: Colors.white, size: 28),
+            SizedBox(width: 8),
+            Text("Our Home", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white)),
           ],
         ),
         backgroundColor: Colors.green[900],
@@ -24,12 +25,11 @@ class HomePage extends StatelessWidget {
         shadowColor: Colors.black.withOpacity(0.3),
         centerTitle: true,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
         ),
       ),
       body: Stack(
         children: [
-          // Full-Screen Background Image
           Positioned.fill(
             child: Image.network(
               'https://images.unsplash.com/photo-1562683407-043a7eafceb6?q=80&w=2080&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
@@ -38,11 +38,8 @@ class HomePage extends StatelessWidget {
           ),
           Positioned.fill(
             child: Container(
-              color: Colors.white.withOpacity(0.1), // Adjust transparency as needed
+              color: Colors.black.withOpacity(0.4), // Soft dark overlay for readability
             ),
-          ),
-          Container(
-            color: Colors.green.withOpacity(0.1), // Adds slight tint for readability
           ),
           FutureBuilder<DocumentSnapshot>(
             future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
@@ -54,16 +51,17 @@ class HomePage extends StatelessWidget {
               if (!snapshot.hasData || snapshot.data == null) {
                 return Center(child: Text("No user data found!", style: TextStyle(color: Colors.white)));
               }
+
               return SingleChildScrollView(
                 child: Column(
                   children: [
-                    SizedBox(height: 100), // Adjust for app bar height
+                    SizedBox(height: 100),
                     // Circular Profile Image
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.green[700]!, width: 4),
-                        boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 10)],
+                        boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 10, spreadRadius: 2)],
                       ),
                       child: CircleAvatar(
                         radius: 60,
@@ -77,27 +75,28 @@ class HomePage extends StatelessWidget {
                     SizedBox(height: 15),
                     Text(
                       "Saving Earth, One Step at a Time",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                       textAlign: TextAlign.center,
                     ),
+                    SizedBox(height: 8),
                     Text(
                       "Take a step today towards a greener future 🌿🌍",
-                      style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 16, color: Colors.white70),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 20),
+                    SizedBox(height: 30),
                     // Eco-Friendly Features
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
                         children: [
-                          _buildFeatureCard(context, Icons.eco, "Eco-Friendly Tips", "Discover simple ways to live sustainably."),
+                          _buildFeatureCard(context, Icons.eco, "Recycle rather than dump!", "Discover ways to live sustainably."),
                           _buildFeatureCard(context, Icons.nature_people, "Wellness & Environment", "Stay healthy while saving the planet."),
                           _buildFeatureCard(context, Icons.track_changes, "Daily Green Challenge", "A new challenge every day!"),
                         ],
                       ),
                     ),
-                    SizedBox(height: 30),
+                    SizedBox(height: 90),
                   ],
                 ),
               );
@@ -110,45 +109,39 @@ class HomePage extends StatelessWidget {
 
   // ✅ Pass `BuildContext` as a parameter
   Widget _buildFeatureCard(BuildContext context, IconData icon, String title, String subtitle) {
-    return Card(
-      margin: EdgeInsets.symmetric(vertical: 10),
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      color: Colors.white.withOpacity(0.85), // Slight transparency
-      child: ListTile(
-        leading: Container(
-          padding: EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.green[100],
-          ),
-          child: Icon(icon, color: Colors.green[800], size: 30),
+    return GestureDetector(
+      onTap: () {
+        // Handle tap for navigation
+        if (title == "Wellness & Environment") {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => WellnessPage()));
+        } else if (title == "Recycle rather than dump!") {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => RecyclingSearchPage())); // Replace with actual page
+        } else if (title == "Daily Green Challenge") {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => WellnessPage())); // Replace with actual page
+        }
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          color: Colors.white.withOpacity(0.8),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, spreadRadius: 1)],
         ),
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        subtitle: Text(subtitle, style: TextStyle(color: Colors.black54, fontSize: 14)),
-        trailing: Icon(Icons.arrow_forward_ios, color: Colors.green[700]),
-        onTap: () {
-          if (title == "Wellness & Environment") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => WellnessPage()),
-            );
-          }
-          if (title == "Eco-Friendly Tips") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => WellnessPage()),
-            );
-          }
-          if (title == "Daily Green Challenge") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => WellnessPage()),
-            );
-          }
-        },
+        child: ListTile(
+          contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          leading: Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.green[100],
+            ),
+            child: Icon(icon, color: Colors.green[800], size: 28),
+          ),
+          title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          subtitle: Text(subtitle, style: TextStyle(color: Colors.black54, fontSize: 12)),
+          trailing: Icon(Icons.arrow_forward_ios, color: Colors.green[700]),
+        ),
       ),
     );
   }
 }
-

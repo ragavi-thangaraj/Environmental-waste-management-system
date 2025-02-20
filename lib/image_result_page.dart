@@ -3,10 +3,11 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:animated_text_kit/animated_text_kit.dart';
+import 'disposal.dart';
 class ImageResultPage extends StatefulWidget {
   final File image;
-  final Map<String, dynamic> descriptionText; // JSON response containing labels
+  final Map<String, dynamic> descriptionText;
 
   ImageResultPage({required this.image, required this.descriptionText});
 
@@ -19,12 +20,15 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
   bool _isLoading = false;
   String _responseText = "Select a tab to fetch data";
   List<String> _labels = [];
+  bool _isScrolled = false; // Track scroll state
+  late ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 4, vsync: this, initialIndex: 3); // Start at Disposal Measures tab
     _extractLabels();
+    _fetchData("Disposal Measures"); // Fetch data for the default tab
   }
 
   void _extractLabels() {
@@ -129,23 +133,14 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
 
     String formattedQuery;
     if (query == "Product Details") {
-      formattedQuery =
-      "Describe the significance of these items: ${_labels.join(
-          ", ")}. Provide 3 advantages and disadvantages.";
+      formattedQuery = "Based on these labels: ${_labels.join(", ")}, identify the product. Explain its significance in daily life and highlight three key advantages and disadvantages that users commonly experience and explain in detail";
     } else if (query == "Environmental Impact") {
-      formattedQuery =
-      "Explain how these items: ${_labels.join(
-          ", ")} impact in our environment or the ecosystem, like how will it help us or the ecosystem what are all the real uses if it is harmfull suggest me the way to make it useful to me and make the environment clean and tide.";
+      formattedQuery = "Using these labels: ${_labels.join(", ")}, determine the product. Analyze its impact on the environment, including its effects on ecosystems and practical uses. If it poses harm, suggest realistic ways to repurpose or dispose of it responsibly to minimize pollution and promote sustainability. Do not include phrases like 'Below is' or 'Here is' in your response; provide only the content and explain in detail";
     } else if (query == "Health Impact") {
-      formattedQuery =
-      "Discuss the benefits and side effects of these items: ${_labels.join(
-          ", ")} when consumed or used.";
+      formattedQuery = "Identify the product based on these labels: ${_labels.join(", ")}. Discuss its health benefits and potential risks when used or consumed. Address common concerns people face regarding safety, allergies, or long-term effects. Avoid unnecessary introductory phrases and provide direct, clear information and explain me in detail with needed measure to be taken";
     } else {
-      formattedQuery =
-      "Provide the correct disposal methods for these items: ${_labels.join(
-          ", ")}.";
+      formattedQuery = "Recognizing the product from these labels: ${_labels.join(", ")}, explain the correct disposal methods. Provide clear, easy-to-follow steps that ensure environmental safety. Use simple language so even an 8-year-old can understand how to dispose of it properly without harming nature. Do not include phrases like 'Below is' or 'Here is'; deliver the information directly and explain me in detail after explaining give me the task needed to be done to dispose them mention those task seperatedly as Task to be taken followed by the task only in bulletin";
     }
-
 
     setState(() {
       _isLoading = true;
@@ -208,8 +203,7 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
     }
 }
 
-
-    @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: NestedScrollView(
@@ -219,19 +213,29 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
             elevation: 10,
             pinned: true,
             expandedHeight: 250,
+            title: innerBoxIsScrolled
+                ? Center(
+              child: Text(
+                "Product Analysis",
+                style: TextStyle(
+                  fontWeight: FontWeight.w600, // Bolder text
+                  fontSize: 24, // Slightly larger
+                  letterSpacing: 1.2, // Better readability
+                  shadows: [
+                    Shadow(blurRadius: 6, color: Colors.black87, offset: Offset(2, 2)), // Enhanced shadow
+                  ],
+                  foreground: Paint() // Gradient effect
+                    ..shader = LinearGradient(
+                      colors: [Colors.greenAccent, Colors.white], // Gradient colors
+                    ).createShader(Rect.fromLTWH(0, 0, 200, 40)),
+                ),
+                textAlign: TextAlign.center, // Center align text
+              ),
+            )
+
+                : null, // Only show title when scrolled
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: EdgeInsets.only(left: 16, bottom: 16),
-              title: Text(
-                "",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  fontSize: 22,
-                  shadows: [
-                    Shadow(blurRadius: 4, color: Colors.black54, offset: Offset(1, 1))
-                  ],
-                ),
-              ),
               background: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -242,7 +246,7 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withOpacity(0.4),  // Darker top for readability
+                          Colors.black.withOpacity(0.4), // Darker top for readability
                           Colors.transparent,
                           Colors.green[900]!.withOpacity(0.6), // Green tint at the bottom
                         ],
@@ -319,21 +323,60 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
                         ),
                         Divider(color: Colors.green[700], thickness: 1.5),
                         SizedBox(height: 10),
+
+                        /// **Typing Animation for Response**
                         AnimatedOpacity(
                           duration: Duration(milliseconds: 800),
                           opacity: 1.0,
-                          child: Text(
-                            _responseText,
+                          child: DefaultTextStyle(
                             style: TextStyle(
                               fontSize: 17,
                               color: Colors.black87,
                               height: 1.6,
                               fontWeight: FontWeight.w500,
                             ),
-                            textAlign: TextAlign.justify,
+                            child: AnimatedTextKit(
+                              animatedTexts: [
+                                TypewriterAnimatedText(
+                                  _responseText,
+                                  speed: Duration(milliseconds: 30), // Adjust speed here
+                                ),
+                              ],
+                              isRepeatingAnimation: false,
+                            ),
                           ),
                         ),
+
                         SizedBox(height: 12),
+                        if (_tabController.index == 3)
+                          Center(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => DisposalPage(responseText: _responseText),
+                                  ),
+                                );
+                              },
+                              icon: Icon(Icons.battery_saver, color: Colors.white),
+                              label: Text(
+                                " Dispose & Clean!",
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,color: Colors.white),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green[800],
+                                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 5,
+                              ),
+                            ),
+                          ),
+                        SizedBox(height: 12),
+                        Divider(color: Colors.green[700], thickness: 1.5),
+                        SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -361,13 +404,12 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
     );
   }
 
+
   String formatResponseText(String responseBody) {
     try {
       var decodedJson = jsonDecode(responseBody);
-
       if (decodedJson is Map<String, dynamic> && decodedJson.containsKey("result")) {
         String text = decodedJson["result"];
-
         // Define a replacement map for fixing encoding issues
         final Map<String, String> replacements = {
           "â": "–", // En dash
@@ -381,16 +423,13 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
           "â¢": "™", // Trademark symbol
           "â": "✔", // Checkmark
         };
-
         // Apply replacements
         replacements.forEach((key, value) {
           text = text.replaceAll(key, value);
         });
-
         // Improve readability with formatting
         text = text.replaceAll("\\n", "\n").trim();
         text = text.replaceAll(RegExp(r"(?<=\d)\.\s"), ".\n\n");
-
         return text;
       } else {
         return "Invalid response format!";

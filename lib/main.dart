@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'home_page.dart';
@@ -84,32 +85,88 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 }
 
-class OnboardingCarousel extends StatelessWidget {
+class OnboardingCarousel extends StatefulWidget {
   final VoidCallback onSkip;
 
   OnboardingCarousel({required this.onSkip});
 
+  @override
+  _OnboardingCarouselState createState() => _OnboardingCarouselState();
+}
+
+class _OnboardingCarouselState extends State<OnboardingCarousel> {
+  int _currentIndex = 0;
+  bool isLoading = false;
   final List<Map<String, String>> slides = [
     {
       'image': 'https://images.aiscribbles.com/c9ed99ddf71e4ddea8c75d54ac371726.jpg?v=f428f2',
-      'quote': "“Breathe in nature, breathe out stress.”",
+      'quote': "Your Appearance Reflects Nature's Beauty",
+      'subtitle': "Transform Your Style, Embrace a Sustainable Future"
     },
     {
       'image': 'https://storage.googleapis.com/nsn-content/production/media/uploads/whatsapp_image_2022-07-26_at_2.54.32_pm(2).jpeg',
-      'quote': "“Every sunrise is an invitation to grow.”",
+      'quote': "Style is a Reflection of Your Environmental Impact",
+      'subtitle': "Step into Eco-Friendly Fashion and Make a Positive Change"
     },
     {
       'image': 'https://img.freepik.com/free-photo/tea-plantation_658691-674.jpg',
-      'quote': "“Find peace where the wild things are.”",
+      'quote': "Look Good, Feel Earth-Friendly",
+      'subtitle': "Discover the Power of Eco-Conscious Fashion Choices"
     },
   ];
+
+
+  Future<void> signInWithGoogle() async {
+    setState(() => isLoading = true);
+
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      User? user = userCredential.user;
+
+      await saveUserData(user);
+
+      if (user != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage(user: user)),
+        );
+      }
+    } catch (e) {
+      print("Google Sign-In Error: $e");
+    }
+
+    setState(() => isLoading = false); // Hide loading
+  }
+
+  Future<void> saveUserData(User? user) async {
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'name': user.displayName,
+        'email': user.email,
+        'phone': user.phoneNumber,
+        'profile': user.photoURL,
+      }, SetOptions(merge: true));
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // Carousel Slider with animations
           CarouselSlider.builder(
             options: CarouselOptions(
               height: MediaQuery.of(context).size.height,
@@ -119,14 +176,17 @@ class OnboardingCarousel extends StatelessWidget {
               autoPlayAnimationDuration: Duration(milliseconds: 800),
               autoPlayCurve: Curves.easeInOut,
               enableInfiniteScroll: true,
-              enlargeCenterPage: true,
+              onPageChanged: (index, reason) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
             ),
             itemCount: slides.length,
             itemBuilder: (context, index, realIndex) {
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Background Image
                   Container(
                     decoration: BoxDecoration(
                       image: DecorationImage(
@@ -135,102 +195,112 @@ class OnboardingCarousel extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Gradient Overlay for better contrast
+                  // Adjusted gradient to make top 1/4 transparent, then transition to white
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Colors.black.withOpacity(0.3),
-                          Colors.black.withOpacity(0.7),
+                          Colors.transparent, // Transparent for the top 1/4
+                          Colors.white.withOpacity(0.0), // Start fading to white
+                          Colors.white, // Full white at the bottom
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
+                        stops: [0.0, 0.25, 1.0], // First 25% transparent, then transition to white
                       ),
                     ),
                   ),
-                  // Quote Text with fade-in animation
                   Positioned(
-                    bottom: 100,
+                    bottom: 120,
                     left: 20,
                     right: 20,
                     child: Column(
                       children: [
-                        AnimatedOpacity(
-                          opacity: 1.0,
-                          duration: Duration(milliseconds: 800),
-                          child: Text(
-                            slides[index]['quote']!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                              fontFamily: 'Montserrat',
-                              shadows: [
-                                Shadow(
-                                  blurRadius: 8.0,
-                                  color: Colors.black38,
-                                  offset: Offset(1, 2),
-                                ),
-                              ],
-                            ),
+                        Text(
+                          slides[index]['quote']!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          slides[index]['subtitle']!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black,
                           ),
                         ),
                       ],
                     ),
                   ),
+                  Positioned(
+                    bottom: 50,
+                    left: 30,
+                    right: 30,
+                    child: ElevatedButton.icon(
+                      onPressed: isLoading ? null : signInWithGoogle,
+                      icon: Image.network(
+                        'https://lh3.googleusercontent.com/COxitqgJr1sJnIDe8-jiKhxDx1FrYbtRHKJ9z_hELisAlapwE9LUPh6fcXIfb5vwpbMl4xl9H9TRFPc5NOO8Sb3VSgIBrfRYvW6cUA',
+                        height: 24,
+                        width: 24,
+                      ),
+                      label: isLoading
+                          ? CircularProgressIndicator(color: Colors.black)
+                          : Text(
+                        'Login with Google',
+                        style: TextStyle(color: Colors.black, fontSize: 16),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 5,
+                      ),
+                    ),
+                  ),
+
                 ],
               );
             },
           ),
-
-          // Skip Button - Styled for better UX
           Positioned(
-            top: 50,
-            right: 20,
-            child: GestureDetector(
-              onTap: onSkip,
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 5,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  "Skip",
-                  style: TextStyle(
-                    color: Colors.black87,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Dots Indicator
-          Positioned(
-            bottom: 30,
+            bottom: 20,
             left: 0,
             right: 0,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
                 slides.length,
-                    (index) => Container(
-                  margin: EdgeInsets.symmetric(horizontal: 4),
-                  width: 10,
-                  height: 10,
+                    (index) => AnimatedContainer(
+                  duration: Duration(milliseconds: 300),
+                  margin: EdgeInsets.symmetric(horizontal: 6),
+                  width: index == _currentIndex ? 18 : 12,  // Larger size for active dot
+                  height: index == _currentIndex ? 18 : 12, // Larger size for active dot
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.8),
+                    color: index == _currentIndex
+                        ? Colors.green // Active dot color
+                        : Colors.white.withOpacity(0.6), // Inactive dot color
+                    boxShadow: index == _currentIndex
+                        ? [
+                      BoxShadow(
+                        color: Colors.green.withOpacity(0.5),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      )
+                    ]
+                        : [], // Shadow effect for active dot
+                    gradient: index == _currentIndex
+                        ? LinearGradient(
+                      colors: [Colors.green.shade400, Colors.green.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                        : null, // Gradient effect for active dot
                   ),
                 ),
               ),
@@ -241,7 +311,6 @@ class OnboardingCarousel extends StatelessWidget {
     );
   }
 }
-
 
 class UserHomePage extends StatelessWidget {
   @override
