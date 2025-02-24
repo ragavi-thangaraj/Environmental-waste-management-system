@@ -6,7 +6,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'dart:ui';
+import 'package:google_fonts/google_fonts.dart';
 class RecyclingSearchPage extends StatefulWidget {
   @override
   _RecyclingSearchPageState createState() => _RecyclingSearchPageState();
@@ -40,10 +41,12 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
         }
       }
 
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      Position position =
+      await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       _latitude = position.latitude;
       _longitude = position.longitude;
-      List<Placemark>? placemarks = await GeocodingPlatform.instance?.placemarkFromCoordinates(_latitude!, _longitude!);
+      List<Placemark>? placemarks =
+      await GeocodingPlatform.instance?.placemarkFromCoordinates(_latitude!, _longitude!);
       Placemark? place = placemarks?[0];
       setState(() {
         _currentAddress = '${place!.name}, ${place.locality}, ${place.country}';
@@ -67,7 +70,6 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
     });
 
     try {
-      // Fetch data from both collections concurrently using Future.wait
       await Future.wait([
         _fetchCollection('erode'),
         _fetchCollection('perundurai'),
@@ -83,7 +85,8 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
   // Fetch Collection and Process Documents
   Future<void> _fetchCollection(String collectionName) async {
     try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance.collection(collectionName).get();
+      QuerySnapshot snapshot =
+      await FirebaseFirestore.instance.collection(collectionName).get();
       for (var doc in snapshot.docs) {
         _processDocument(doc);
       }
@@ -102,7 +105,7 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
 
       double distance = _calculateDistance(lat, lon, _latitude!, _longitude!);
 
-      // Check if the place already exists in _results based on 'name'
+      // Avoid duplicates by name
       bool isDuplicate = _results.any((place) => place['name'] == doc['name']);
       if (!isDuplicate) {
         setState(() {
@@ -116,7 +119,7 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
             'phone': doc['phone'],
             'link': doc['link'],
           });
-          _results.sort((a, b) => a['distance'].compareTo(b['distance'])); // Sort by distance
+          _results.sort((a, b) => a['distance'].compareTo(b['distance']));
         });
       }
       _isLoadingResults = false;
@@ -127,20 +130,17 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
 
   // Calculate Distance between User and Place
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const double pi = 3.141592653589793238;
-    const double radius = 6371; // Earth radius in kilometers
-
+    const double piVal = 3.141592653589793238;
+    const double radius = 6371; // in km
     double dLat = _degreesToRadians(lat2 - lat1);
     double dLon = _degreesToRadians(lon2 - lon1);
     double a = (sin(dLat / 2) * sin(dLat / 2)) +
-        cos(_degreesToRadians(lat1)) *
-            cos(_degreesToRadians(lat2)) *
+        cos(_degreesToRadians(lat1)) * cos(_degreesToRadians(lat2)) *
             (sin(dLon / 2) * sin(dLon / 2));
     double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return radius * c; // Distance in kilometers
+    return radius * c;
   }
 
-  // Convert Degrees to Radians
   double _degreesToRadians(double degree) {
     return degree * pi / 180.0;
   }
@@ -161,6 +161,7 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Use a Stack to place a background image behind the results area
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -168,139 +169,176 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: 24, // Adjusted size for better visibility
+            fontSize: 24,
           ),
         ),
         backgroundColor: Colors.green.shade800,
-        elevation: 0, // No shadow for a cleaner look
+        elevation: 0,
         centerTitle: true,
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Location Section with Icon and better styling
-            Row(
+      body: Stack(
+        children: [
+          // Background image covering only the results area
+          Positioned(
+            top: 200, // Start background image after the top (location) section
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('lib/assets/ease.jpg'),
+                  fit: BoxFit.cover,
+                ),
+              ),
+              // A gradient to fade from white to transparent:
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.white.withOpacity(0.9), Colors.transparent],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.location_on, color: Colors.green.shade700, size: 30), // Location Icon
-                SizedBox(width: 10),
-                Text(
-                  "Your Location:",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.green.shade700,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            _isLoadingLocation
-                ? Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(Colors.green.shade700),
-              ),
-            )
-                : Card(
-              elevation: 6,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  _currentAddress,
-                  style: TextStyle(
-                    color: Colors.grey[700],
-                    fontSize: 16,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-
-            // Results Section with better state handling
-            _isLoadingResults
-                ? Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(Colors.green.shade700),
-              ),
-            )
-                : _results.isNotEmpty
-                ? Expanded(
-              child: ListView.builder(
-                itemCount: _results.length,
-                itemBuilder: (context, index) {
-                  return InkWell(
-                    onTap: () => _onCardTap(_results[index]),
-                    child: Card(
-                      margin: EdgeInsets.symmetric(vertical: 6), // Reduced margin
-                      elevation: 8, // Slightly reduced elevation for a lighter look
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15), // Rounded corners
+                // Location Section
+                Row(
+                  children: [
+                    Icon(Icons.location_on, color: Colors.green.shade700, size: 30),
+                    SizedBox(width: 10),
+                    Text(
+                      "Your Location:",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.green.shade700,
                       ),
-                      shadowColor: Colors.green.shade200,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(15),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.green.shade100, Colors.green.shade300],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+                _isLoadingLocation
+                    ? Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation(Colors.green.shade700),
+                  ),
+                )
+                    : Card(
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text(
+                      _currentAddress,
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 16,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+
+                // Results Section
+                // Updated Results Section inside your build() method
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: _results.length,
+                    separatorBuilder: (context, index) => SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final result = _results[index];
+                      double distance = result['distance'];
+                      String distanceStr = "${distance.toStringAsFixed(1)} km away";
+                      return InkWell(
+                        onTap: () => _onCardTap(result),
+                        child: Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
                           ),
-                          child: ListTile(
-                            contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16), // Reduced padding
-                            leading: CircleAvatar(
-                              backgroundImage: NetworkImage(_results[index]['image']),
-                              radius: 24, // Reduced avatar size
-                              backgroundColor: Colors.transparent,
-                            ),
-                            title: Text(
-                              _results[index]['name'],
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18, // Slightly smaller title
-                                color: Colors.green.shade800,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          shadowColor: Colors.green.shade100,
+                          child: Container(
+                            padding: EdgeInsets.all(12),
+                            child: Row(
                               children: [
-                                SizedBox(height: 4),
-                                Text(
-                                  _results[index]['address'],
-                                  style: TextStyle(
-                                    fontSize: 14, // Smaller subtitle text
-                                    color: Colors.grey[700],
+                                // Left: Image with rounded corners
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    width: 80,
+                                    height: 80,
+                                    child: Image.network(
+                                      result['image'],
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                SizedBox(height: 8),
+                                SizedBox(width: 16),
+                                // Right: Text information
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        result['name'],
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18,
+                                          color: Colors.green.shade800,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        result['address'],
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[700],
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.location_on,
+                                              size: 16, color: Colors.green.shade600),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            distanceStr,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Optional: an arrow icon to indicate tappable details
+                                Icon(Icons.arrow_forward_ios,
+                                    size: 16, color: Colors.green.shade600),
                               ],
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            )
-                : Center(
-              child: Text(
-                "No results found",
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 18, // Slightly larger for better visibility
+                      );
+                    },
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -312,7 +350,11 @@ class DetailPage extends StatelessWidget {
   final double userLatitude;
   final double userLongitude;
 
-  DetailPage({required this.placeData, required this.userLatitude, required this.userLongitude});
+  DetailPage({
+    required this.placeData,
+    required this.userLatitude,
+    required this.userLongitude,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -321,28 +363,54 @@ class DetailPage extends StatelessWidget {
     String accessibility = placeData['accessibility'] ?? "N/A";
 
     // Calculate distance from the user
-    double distance = _calculateDistance(placeData['lat'], placeData['lon'], userLatitude, userLongitude);
+    double distance = _calculateDistance(
+        placeData['lat'], placeData['lon'], userLatitude, userLongitude);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Recycling Center Nearby',style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold,fontSize: 24),),
+        title: Text(
+          'Recycling Center Nearby',
+          style: TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
+        ),
         backgroundColor: Colors.green.shade800,
         elevation: 0,
       ),
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.green.shade50, Colors.green.shade300],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      // Stack to layer the background image with gradient and the content
+      body: Stack(
+        children: [
+          // Background: local asset with a gradient overlay that starts white at the top
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('lib/assets/ease.jpg'),
+                  fit: BoxFit.cover,
+                ),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white,
+                      Colors.white.withOpacity(0.9),
+                      Colors.white.withOpacity(0.6),
+                      Colors.transparent,
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0.0, 0.3, 0.6, 1.0],
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
+          // Content Area
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                // Header image
+                // Header image with rounded corners and fade overlay
                 ClipRRect(
                   borderRadius: BorderRadius.circular(30),
                   child: Stack(
@@ -357,7 +425,10 @@ class DetailPage extends StatelessWidget {
                         height: 250,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Colors.black54, Colors.transparent],
+                            colors: [
+                              Colors.black54,
+                              Colors.transparent,
+                            ],
                             begin: Alignment.bottomCenter,
                             end: Alignment.topCenter,
                           ),
@@ -367,50 +438,64 @@ class DetailPage extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 20),
+                // Title with modern Google Fonts
                 Text(
                   placeData['name'],
-                  style: TextStyle(
+                  style: GoogleFonts.roboto(
                     fontWeight: FontWeight.bold,
                     fontSize: 30,
                     color: Colors.green.shade800,
                     letterSpacing: 1.2,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 10),
-                // Address section with icon
+                SizedBox(height: 8),
+                Divider(
+                  thickness: 1,
+                  color: Colors.green.shade100,
+                ),
+                SizedBox(height: 16),
+                // Address Section
                 _buildAddressSection(),
                 SizedBox(height: 20),
-                // Dynamic Distance Meter with smooth animation
+                // Animated Distance Section
                 _buildDistanceSection(distance),
                 SizedBox(height: 20),
-                // Phone number with cool interaction
+                // Phone Section (call-to-action)
                 _buildPhoneSection(),
                 SizedBox(height: 20),
-                // Accessibility Info with Glassmorphism effect
+                // Accessibility Section with soft frosted glass effect
                 _buildAccessibilitySection(accessibility),
                 SizedBox(height: 20),
-                // Recycling options in a sleek list
+                // Recycling Options Section
                 _buildRecyclingOptionsSection(recyclingList),
+                SizedBox(height: 30),
               ],
             ),
           ),
-        ),
+        ],
       ),
+      // Floating action button for launching link
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          if (await canLaunch(placeData['link'])) {
-            await launch(placeData['link']);
+          final link = placeData['link'];
+          if (await canLaunch(link)) {
+            await launch(link);
           } else {
-            throw 'Could not launch ${placeData['link']}';
+            throw 'Could not launch $link';
           }
         },
         backgroundColor: Colors.green.shade800,
-        child: Icon(Icons.location_on, size: 30,color: Colors.white,),
+        child: Icon(
+          Icons.location_on,
+          size: 30,
+          color: Colors.white,
+        ),
       ),
     );
   }
 
-  // Address section with icon
+  // Address Section with icon
   Widget _buildAddressSection() {
     return Row(
       children: [
@@ -428,96 +513,117 @@ class DetailPage extends StatelessWidget {
     );
   }
 
-  // Distance Section with Animation & Progress Indicator
+  // Animated Distance Section with TweenAnimationBuilder
   Widget _buildDistanceSection(double distance) {
+    final progressValue = (distance / 100).clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           "Distance from you:",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green[800]),
+          style: TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green.shade800),
         ),
         SizedBox(height: 8),
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              height: 160,
-              width: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Colors.green.shade200, Colors.green.shade500],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0, end: progressValue),
+          duration: Duration(milliseconds: 800),
+          builder: (context, value, child) {
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  height: 160,
+                  width: 160,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Colors.green.shade200, Colors.green.shade500],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: CircularProgressIndicator(
+                    value: value,
+                    strokeWidth: 12,
+                    valueColor: AlwaysStoppedAnimation(Colors.green.shade700),
+                    backgroundColor: Colors.white.withOpacity(0.3),
+                  ),
                 ),
-              ),
-              child: CircularProgressIndicator(
-                value: distance / 100, // Scale the value to a maximum of 100 km
-                strokeWidth: 12,
-                valueColor: AlwaysStoppedAnimation(Colors.green.shade700),
-              ),
-            ),
-            Positioned(
-              child: Text(
-                "${distance.toStringAsFixed(2)} km",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green[800]),
-              ),
-            ),
-          ],
+                Text(
+                  "${distance.toStringAsFixed(2)} km",
+                  style: TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green.shade800),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
   }
 
-  // Phone section with tap action
+  // Phone Section with call action wrapped in a Card
   Widget _buildPhoneSection() {
+    String phone = placeData['phone'] ?? '';
     return GestureDetector(
-      onTap: () {
-        // Action to dial the phone number (for example)
-        String phone = placeData['phone'] ?? '';
+      onTap: () async {
         if (phone.isNotEmpty) {
-          launch('tel:$phone');
+          final callUrl = 'tel:$phone';
+          if (await canLaunch(callUrl)) {
+            await launch(callUrl);
+          } else {
+            throw 'Could not launch $callUrl';
+          }
         }
       },
-      child: Row(
-        children: [
-          Icon(Icons.phone, color: Colors.green.shade700, size: 30),
-          SizedBox(width: 10),
-          Text(
-            "Phone: ${placeData['phone'] ?? 'N/A'}",
-            style: TextStyle(fontSize: 18, color: Colors.grey[700]),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        color: Colors.green.shade50,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Row(
+            children: [
+              Icon(Icons.phone, color: Colors.green.shade700, size: 30),
+              SizedBox(width: 10),
+              Text(
+                "Phone: ${phone.isNotEmpty ? phone : 'N/A'}",
+                style: TextStyle(fontSize: 18, color: Colors.grey[700]),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // Accessibility Section with Glassmorphism Effect
+  // Accessibility Section with frosted glass effect
   Widget _buildAccessibilitySection(String accessibility) {
     return accessibility != "N/A"
-        ? Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.shade200,
-            blurRadius: 8,
-            offset: Offset(2, 4),
+        ? ClipRRect(
+      borderRadius: BorderRadius.circular(15),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),
-        ],
-      ),
-      padding: EdgeInsets.all(16),
-      child: Text(
-        "Accessibility: $accessibility",
-        style: TextStyle(fontSize: 18, color: Colors.green[800], fontWeight: FontWeight.bold),
+          padding: EdgeInsets.all(16),
+          child: Text(
+            "Accessibility: $accessibility",
+            style: TextStyle(
+                fontSize: 18, color: Colors.green.shade800, fontWeight: FontWeight.bold),
+          ),
+        ),
       ),
     )
         : SizedBox.shrink();
   }
 
-  // Recycling Options Section with sleek cards
+  // Recycling Options Section with updated sleek cards
   Widget _buildRecyclingOptionsSection(List<String> recyclingList) {
     return recyclingList.isNotEmpty
         ? Column(
@@ -525,13 +631,15 @@ class DetailPage extends StatelessWidget {
       children: [
         Text(
           "Recycling Options:",
-          style: TextStyle(fontSize: 18, color: Colors.green[800], fontWeight: FontWeight.bold),
+          style: TextStyle(
+              fontSize: 18, color: Colors.green.shade800, fontWeight: FontWeight.bold),
         ),
         ...recyclingList.map((item) => Card(
           color: Colors.green.shade50,
-          elevation: 5,
+          elevation: 4,
           margin: EdgeInsets.symmetric(vertical: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
           child: Padding(
             padding: const EdgeInsets.all(12.0),
             child: Text(
@@ -545,22 +653,19 @@ class DetailPage extends StatelessWidget {
         : SizedBox.shrink();
   }
 
-  // Function to calculate distance between two geographic coordinates using the Haversine formula
+  // Calculate distance between coordinates using Haversine formula
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const double pi = 3.141592653589793238;
     const double radius = 6371; // Earth radius in kilometers
-
     double dLat = _degreesToRadians(lat2 - lat1);
     double dLon = _degreesToRadians(lon2 - lon1);
     double a = (sin(dLat / 2) * sin(dLat / 2)) +
-        cos(_degreesToRadians(lat1)) *
-            cos(_degreesToRadians(lat2)) *
+        cos(_degreesToRadians(lat1)) * cos(_degreesToRadians(lat2)) *
             (sin(dLon / 2) * sin(dLon / 2));
     double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return radius * c; // Distance in kilometers
+    return radius * c;
   }
 
-  // Convert Degrees to Radians
+  // Convert degrees to radians
   double _degreesToRadians(double degree) {
     return degree * pi / 180.0;
   }

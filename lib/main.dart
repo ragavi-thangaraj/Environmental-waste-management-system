@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'home_page.dart';
 import 'login.dart';
-
+import 'package:google_fonts/google_fonts.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
@@ -219,9 +219,9 @@ class _OnboardingCarouselState extends State<OnboardingCarousel> {
                         Text(
                           slides[index]['quote']!,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
+                          style: GoogleFonts.greatVibes(
+                            fontSize: 32, // Slightly larger for an elegant feel
+                            fontWeight: FontWeight.bold, // Normal weight for cursive look
                             color: Colors.black,
                           ),
                         ),
@@ -229,9 +229,9 @@ class _OnboardingCarouselState extends State<OnboardingCarousel> {
                         Text(
                           slides[index]['subtitle']!,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.black,
+                          style: GoogleFonts.greatVibes(
+                            fontSize: 20,
+                            color: Colors.black.withOpacity(0.8),
                           ),
                         ),
                       ],
@@ -277,30 +277,31 @@ class _OnboardingCarouselState extends State<OnboardingCarousel> {
                 slides.length,
                     (index) => AnimatedContainer(
                   duration: Duration(milliseconds: 300),
-                  margin: EdgeInsets.symmetric(horizontal: 6),
-                  width: index == _currentIndex ? 18 : 12,  // Larger size for active dot
-                  height: index == _currentIndex ? 18 : 12, // Larger size for active dot
+                  curve: Curves.easeInOut,
+                  margin: EdgeInsets.symmetric(horizontal: 4),
+                  width: index == _currentIndex ? 30 : 15, // Longer active line
+                  height: 6, // Line thickness
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(5), // Rounded edges
                     color: index == _currentIndex
-                        ? Colors.green // Active dot color
-                        : Colors.white.withOpacity(0.6), // Inactive dot color
+                        ? Colors.green // Active line color
+                        : Colors.white.withOpacity(0.5), // Inactive line color
                     boxShadow: index == _currentIndex
                         ? [
                       BoxShadow(
-                        color: Colors.green.withOpacity(0.5),
+                        color: Colors.green.withOpacity(0.6),
                         blurRadius: 10,
                         spreadRadius: 2,
                       )
                     ]
-                        : [], // Shadow effect for active dot
+                        : [],
                     gradient: index == _currentIndex
                         ? LinearGradient(
-                      colors: [Colors.green.shade400, Colors.green.shade600],
+                      colors: [Colors.green.shade400, Colors.green.shade700],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     )
-                        : null, // Gradient effect for active dot
+                        : null, // Gradient effect for active line
                   ),
                 ),
               ),

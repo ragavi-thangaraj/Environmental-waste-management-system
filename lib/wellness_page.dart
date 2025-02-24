@@ -5,14 +5,17 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'image_result_page.dart';
+
 class WellnessPage extends StatefulWidget {
   @override
   _WellnessPageState createState() => _WellnessPageState();
 }
+
 class _WellnessPageState extends State<WellnessPage> {
   File? _selectedImage;
   String? _imageDescription;
   bool _isLoading = false;
+
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
@@ -24,19 +27,17 @@ class _WellnessPageState extends State<WellnessPage> {
       await _fetchImageDescription(_selectedImage!);
     }
   }
+
   Future<String?> _fetchAPIKey() async {
     try {
       print("🔄 Fetching API Keys from Firestore...");
-
-      // Fetch API keys from Firestore
       DocumentSnapshot<Map<String, dynamic>> doc = await FirebaseFirestore.instance
           .collection("company")
-          .doc("G1HhRecZtrfP72rxEdTI") // Adjust document ID if needed
+          .doc("G1HhRecZtrfP72rxEdTI") // Adjust doc ID if needed
           .get();
 
       if (doc.exists && doc.data() != null && doc.data()!.containsKey("api")) {
-        List<String> apiKeys = List<String>.from(doc.data()!["api"]); // 🔹 Convert to List<String>
-
+        List<String> apiKeys = List<String>.from(doc.data()!["api"]);
         if (apiKeys.isEmpty) {
           print("❌ No API keys available in Firestore.");
           return null;
@@ -44,14 +45,12 @@ class _WellnessPageState extends State<WellnessPage> {
 
         for (String key in apiKeys) {
           print("🔍 Testing API Key: $key");
-
           bool success = await _testAPIKey(key);
           if (success) {
             print("✅ Found a working API Key: $key");
-            return key; // ✅ Return the first valid key
+            return key; // Return the first valid key
           }
         }
-
         print("❌ No valid API keys found!");
         return null;
       } else {
@@ -60,7 +59,6 @@ class _WellnessPageState extends State<WellnessPage> {
     } catch (e) {
       print("⚠️ Error fetching API Key: $e");
     }
-
     return null; // Return null if all keys fail
   }
 
@@ -73,31 +71,24 @@ class _WellnessPageState extends State<WellnessPage> {
       });
 
       print("🔍 Response for $apiKey: ${response.statusCode}");
-
-      return response.statusCode == 200; // ✅ Return true if valid
+      return response.statusCode == 200; // Return true if valid
     } catch (e) {
       print("⚠️ Error testing API Key: $e");
     }
-    return false; // ❌ Return false if failed
+    return false; // Return false if failed
   }
 
   Future<void> _fetchImageDescription(File image) async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     String? apiKey = await _fetchAPIKey();
-
     if (apiKey == null) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
       _showUserMessage("This may take a while. Please try again later.");
       return;
     }
 
     var url = Uri.parse("https://label-image.p.rapidapi.com/detect-label");
-
     var request = http.MultipartRequest("POST", url)
       ..headers["X-RapidAPI-Key"] = apiKey
       ..files.add(await http.MultipartFile.fromPath("image", image.path));
@@ -119,9 +110,7 @@ class _WellnessPageState extends State<WellnessPage> {
           }
         };
 
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
 
         Navigator.push(
           context,
@@ -134,13 +123,12 @@ class _WellnessPageState extends State<WellnessPage> {
         throw Exception("API Request failed.");
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
       _showUserMessage("This may take a while. Please try again later.");
       print("Error: $e");
     }
   }
+
   void _showUserMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -154,6 +142,7 @@ class _WellnessPageState extends State<WellnessPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Keep the same functionality
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Row(
@@ -161,7 +150,8 @@ class _WellnessPageState extends State<WellnessPage> {
           children: [
             Icon(Icons.spa, color: Colors.white),
             SizedBox(width: 8),
-            Text("Wellness & Environment", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            Text("Wellness & Environment",
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
           ],
         ),
         backgroundColor: Colors.green[900],
@@ -172,109 +162,145 @@ class _WellnessPageState extends State<WellnessPage> {
       ),
       body: Stack(
         children: [
-          // 🌿 Background Image with Blurred Overlay
+          // 1) Lightened background image from local asset
           Positioned.fill(
-            child: ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [Colors.black.withOpacity(0.2), Colors.transparent],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ).createShader(bounds),
-              blendMode: BlendMode.darken,
-              child: Image.network(
-                'https://img.pikbest.com/wp/202405/eco-friendly-banner-with-sustainable-green-background-3d-render_9850513.jpg!sw800',
-                fit: BoxFit.cover,
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('lib/assets/ease.jpg'), // Replaced with local asset
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.white.withOpacity(0.7),
+                    BlendMode.srcOver,
+                  ),
+                ),
               ),
             ),
           ),
+
+          // 2) Loading overlay if needed
           if (_isLoading)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withOpacity(0.5),
                 child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       CircularProgressIndicator(color: Colors.greenAccent),
                       SizedBox(height: 20),
-                      Text("Analyzing Image...",
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Text(
+                        "Analyzing Image...",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
 
-          // 🌿 Glassmorphism Effect UI
+          // 3) Main content (centered card)
           Center(
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.85,
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(color: Colors.white.withOpacity(0.3)),
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text("Choose an Image", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-                  SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      width: 220,
-                      height: 220,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white.withOpacity(0.6), width: 3),
-                        borderRadius: BorderRadius.circular(20),
-                        color: Colors.green[50]?.withOpacity(0.5),
-                        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
-                      ),
-                      child: _selectedImage == null
-                          ? Icon(Icons.add_a_photo, size: 80, color: Colors.white)
-                          : ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.file(_selectedImage!, fit: BoxFit.cover),
+            child: SingleChildScrollView(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.85,
+                padding: EdgeInsets.all(20),
+                margin: EdgeInsets.only(top: kToolbarHeight + 40),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Title
+                    Text(
+                      "Choose an Image",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[900],
                       ),
                     ),
-                  ),
-                  SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: _pickImage,
-                    icon: Icon(Icons.upload, color: Colors.white),
-                    label: Text("Select Image", style: TextStyle(color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[700],
-                      padding: EdgeInsets.symmetric(horizontal: 25, vertical: 14),
-                      textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      elevation: 10,
-                    ),
-                  ),
-                  SizedBox(height: 20),
+                    SizedBox(height: 20),
 
-                  // 📜 Image Description after API Response
-                  if (_imageDescription != null)
-                    Padding(
-                      padding: EdgeInsets.all(10),
-                      child: Text(
-                        "🌱 Description: $_imageDescription",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.white),
+                    // Image Preview Container
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        width: 220,
+                        height: 220,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.green[900]!.withOpacity(0.5), width: 3),
+                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.green[50],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: _selectedImage == null
+                            ? Icon(Icons.add_a_photo, size: 80, color: Colors.green[800])
+                            : ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                        ),
                       ),
                     ),
+                    SizedBox(height: 20),
 
-                  SizedBox(height: 10),
+                    // Button
+                    ElevatedButton.icon(
+                      onPressed: _pickImage,
+                      icon: Icon(Icons.upload, color: Colors.white),
+                      label: Text("Select Image", style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[700],
+                        padding: EdgeInsets.symmetric(horizontal: 25, vertical: 14),
+                        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        elevation: 6,
+                      ),
+                    ),
+                    SizedBox(height: 20),
 
-                  // 🌍 Motivational Quote
-                  Text(
-                    "“The earth does not belong to us: we belong to the earth.” 🌍",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.white70),
-                  ),
-                ],
+                    // If there's an image description from the API
+                    if (_imageDescription != null)
+                      Padding(
+                        padding: EdgeInsets.all(10),
+                        child: Text(
+                          "🌱 Description: $_imageDescription",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontStyle: FontStyle.italic,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                      ),
+
+                    // Motivational quote
+                    SizedBox(height: 10),
+                    Text(
+                      "“The earth does not belong to us: we belong to the earth.” 🌍",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
