@@ -113,15 +113,29 @@ class _DisposalPageState extends State<DisposalPage> {
 
       if (docSnapshot.exists) {
         final data = docSnapshot.data()!;
-        final lastCompletion = (data['lastTaskCompletion'] as Timestamp).toDate();
+
+        // Safely get lastTaskCompletion
+        final lastCompletionTimestamp = data['lastTaskCompletion'];
+        DateTime? lastCompletion;
+
+        if (lastCompletionTimestamp != null && lastCompletionTimestamp is Timestamp) {
+          lastCompletion = lastCompletionTimestamp.toDate();
+        }
+
         final currentStreak = data['streakCount'] ?? 0;
         final now = DateTime.now();
 
         int updatedStreak = currentStreak;
-        if (now.difference(lastCompletion).inDays == 1) {
-          updatedStreak += 1; // Continue streak
-        } else if (now.difference(lastCompletion).inDays > 1) {
-          updatedStreak = 1; // Reset streak
+
+        // Check if lastCompletion exists before calculating streak
+        if (lastCompletion != null) {
+          if (now.difference(lastCompletion).inDays == 1) {
+            updatedStreak += 1; // Continue streak
+          } else if (now.difference(lastCompletion).inDays > 1) {
+            updatedStreak = 1; // Reset streak
+          }
+        } else {
+          updatedStreak = 1; // First-time completion, start streak
         }
 
         await userDoc.update({
@@ -132,6 +146,7 @@ class _DisposalPageState extends State<DisposalPage> {
       }
     }
   }
+
 
   void showIncompleteDialog(BuildContext context) {
     showDialog(

@@ -17,7 +17,79 @@ class _WellnessPageState extends State<WellnessPage> {
   bool _isLoading = false;
 
   Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final ImagePicker picker = ImagePicker();
+
+    // Show a dialog to let the user choose
+    final ImageSource? source = await showDialog<ImageSource>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          backgroundColor: Colors.green[50],
+          title: Text(
+            "Choose Image Source",
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: Colors.green[800],
+            ),
+          ),
+          content: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green.shade200, Colors.green.shade100],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(15.0),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(Icons.camera_alt, color: Colors.green[700]),
+                  title: Text(
+                    "Camera",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.green[900],
+                    ),
+                  ),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                  hoverColor: Colors.green[300],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                ),
+                Divider(color: Colors.green[300], thickness: 1),
+                ListTile(
+                  leading: Icon(Icons.photo_library, color: Colors.green[700]),
+                  title: Text(
+                    "Gallery",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.green[900],
+                    ),
+                  ),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                  hoverColor: Colors.green[300],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (source == null) return; // If user cancels the dialog
+
+    final pickedFile = await picker.pickImage(source: source);
     if (pickedFile != null) {
       setState(() {
         _selectedImage = File(pickedFile.path);

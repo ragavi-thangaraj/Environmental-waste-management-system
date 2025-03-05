@@ -99,7 +99,7 @@ class _OnboardingCarouselState extends State<OnboardingCarousel> {
   bool isLoading = false;
   final List<Map<String, String>> slides = [
     {
-      'image': 'https://images.aiscribbles.com/c9ed99ddf71e4ddea8c75d54ac371726.jpg?v=f428f2',
+      'image': 'https://media.istockphoto.com/id/1317323736/photo/a-view-up-into-the-trees-direction-sky.jpg?s=612x612&w=0&k=20&c=i4HYO7xhao7CkGy7Zc_8XSNX_iqG0vAwNsrH1ERmw2Q=',
       'quote': "Your Appearance Reflects Nature's Beauty",
       'subtitle': "Transform Your Style, Embrace a Sustainable Future"
     },
