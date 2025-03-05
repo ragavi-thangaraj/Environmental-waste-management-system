@@ -70,23 +70,29 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
     }
   }
 
-  /// Fetch API Key from Firestore and try keys until one succeeds.
+  /// Fetch API Key from Firestore document "conversationllama"
+  /// The document should have a field named "https://open-ai21.p.rapidapi.com/conversationllama"
+  /// whose value is an array of API keys.
   Future<String?> _fetchAPIKey() async {
     try {
       print("🔄 Fetching API Keys from Firestore...");
       DocumentSnapshot<Map<String, dynamic>> doc = await FirebaseFirestore.instance
           .collection("company")
-          .doc("Ih27A2rQKu08ZdZZhZG4")
+          .doc("conversationllama")
           .get();
 
-      if (doc.exists && doc.data() != null && doc.data()!.containsKey("api_search")) {
-        List<dynamic> apiKeys = doc.data()!["api_search"];
+      // Check if the field with the endpoint as key exists.
+      if (doc.exists &&
+          doc.data() != null &&
+          doc.data()!.containsKey("https://open-ai21.p.rapidapi.com/conversationllama")) {
+        List<dynamic> apiKeys = doc.data()!["https://open-ai21.p.rapidapi.com/conversationllama"];
 
         if (apiKeys.isEmpty) {
           print("❌ No API keys available in Firestore.");
           return null;
         }
 
+        // Iterate over each key in the array.
         for (String key in apiKeys) {
           print("🔍 Testing API Key: $key");
           bool success = await _testAPIKey(key);
@@ -95,6 +101,7 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
             return key;
           }
         }
+        print("❌ No valid API key found in the provided array.");
       } else {
         print("❌ API Key array not found in Firestore!");
       }
@@ -104,24 +111,24 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
     return null; // Return null if all keys fail
   }
 
-  /// Tests API Key to see if it works.
+  /// Tests API Key to see if it works using the conversationllama endpoint.
   Future<bool> _testAPIKey(String apiKey) async {
     try {
-      var url = Uri.parse("https://chatgpt-42.p.rapidapi.com/o3mini");
+      var url = Uri.parse("https://open-ai21.p.rapidapi.com/conversationllama");
       var response = await http.post(url, headers: {
         "X-RapidAPI-Key": apiKey,
         "Content-Type": "application/json"
       });
 
       print("🔍 API Key Test Response: ${response.statusCode}");
-
-      return response.statusCode == 200; // ✅ Key is valid
+      return response.statusCode == 200; // Key is valid if status code is 200
     } catch (e) {
       print("⚠️ Error testing API Key: $e");
       return false;
     }
   }
 
+  /// Fetches data from the conversationllama endpoint using the valid API key.
   Future<void> _fetchData(String query) async {
     if (_labels.isEmpty) {
       print("❌ No labels found, cannot fetch data.");
@@ -131,15 +138,20 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
       return;
     }
 
+    // Build the query string based on the user's input.
     String formattedQuery;
     if (query == "Product Details") {
-      formattedQuery = "Based on these labels: ${_labels.join(", ")}, identify the product. Explain its significance in daily life and highlight three key advantages and disadvantages that users commonly experience and explain in detail";
+      formattedQuery =
+      "Based on these labels: ${_labels.join(", ")}, identify the product. Explain its significance in daily life and highlight three key advantages and disadvantages that users commonly experience and explain in detail";
     } else if (query == "Environmental Impact") {
-      formattedQuery = "Using these labels: ${_labels.join(", ")}, determine the product. Analyze its impact on the environment, including its effects on ecosystems and practical uses. If it poses harm, suggest realistic ways to repurpose or dispose of it responsibly to minimize pollution and promote sustainability. Do not include phrases like 'Below is' or 'Here is' in your response; provide only the content and explain in detail";
+      formattedQuery =
+      "Using these labels: ${_labels.join(", ")}, determine the product. Analyze its impact on the environment, including its effects on ecosystems and practical uses. If it poses harm, suggest realistic ways to repurpose or dispose of it responsibly to minimize pollution and promote sustainability. Do not include phrases like 'Below is' or 'Here is' in your response; provide only the content and explain in detail";
     } else if (query == "Health Impact") {
-      formattedQuery = "Identify the product based on these labels: ${_labels.join(", ")}. Discuss its health benefits and potential risks when used or consumed. Address common concerns people face regarding safety, allergies, or long-term effects. Avoid unnecessary introductory phrases and provide direct, clear information and explain me in detail with needed measure to be taken";
+      formattedQuery =
+      "Identify the product based on these labels: ${_labels.join(", ")}. Discuss its health benefits and potential risks when used or consumed. Address common concerns people face regarding safety, allergies, or long-term effects. Avoid unnecessary introductory phrases and provide direct, clear information and explain in detail with needed measure to be taken";
     } else {
-      formattedQuery = "Recognizing the product from these labels: ${_labels.join(", ")}, explain the correct disposal methods. Provide clear, easy-to-follow steps that ensure environmental safety. Use simple language so even an 8-year-old can understand how to dispose of it properly without harming nature. Do not include phrases like 'Below is' or 'Here is'; deliver the information directly and explain me in detail after explaining give me the task needed to be done to dispose them mention those task seperatedly as Task to be taken followed by the task only in bulletin";
+      formattedQuery =
+      "Recognizing the product from these labels: ${_labels.join(", ")}, explain the correct disposal methods. Provide clear, easy-to-follow steps that ensure environmental safety. Use simple language so even an 8-year-old can understand how to dispose of it properly without harming nature. Do not include phrases like 'Below is' or 'Here is'; deliver the information directly and explain in detail after explaining give me the task needed to be done to dispose them mention those task seperatedly as Task to be taken followed by the task only in bulletin";
     }
 
     setState(() {
@@ -159,7 +171,7 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
       return;
     }
 
-    var url = Uri.parse("https://chatgpt-42.p.rapidapi.com/o3mini");
+    var url = Uri.parse("https://open-ai21.p.rapidapi.com/conversationllama");
 
     var headers = {
       "X-RapidAPI-Key": apiKey,
@@ -168,10 +180,7 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
 
     var body = jsonEncode({
       "messages": [
-        {
-          "role": "user",
-          "content": formattedQuery,
-        }
+        {"role": "user", "content": formattedQuery}
       ],
       "web_access": false
     });
@@ -179,13 +188,12 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
     print("🚀 Sending API Request...");
     print("📝 Request Body: $body");
 
-
     try {
       var response = await http.post(url, headers: headers, body: body);
       print("🔍 Response Status Code: ${response.statusCode}");
       print("📩 Raw Response Body: ${response.body}");
 
-      // Ensure proper UTF-8 decoding
+      // Ensure proper UTF-8 decoding.
       String decodedBody = utf8.decode(response.bodyBytes, allowMalformed: true);
       print("📩 Decoded Response Body: $decodedBody");
 
@@ -193,7 +201,6 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
         _responseText = formatResponseText(decodedBody);
         _isLoading = false;
       });
-
     } catch (e) {
       print("⚠️ Error Fetching Data: $e");
       setState(() {
@@ -201,7 +208,7 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
         _isLoading = false;
       });
     }
-}
+  }
 
   @override
   Widget build(BuildContext context) {

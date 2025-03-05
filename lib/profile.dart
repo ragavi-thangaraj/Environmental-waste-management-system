@@ -104,7 +104,7 @@ class ProfilePage extends StatelessWidget {
                                 leading: Icon(Icons.score, color: Colors.blueAccent),
                                 title: Text('Total Score'),
                                 trailing: Text(
-                                  '${userData['lastTaskScore'] ?? 0}',
+                                  '${userData['totalScore'] ?? 0}',
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),
