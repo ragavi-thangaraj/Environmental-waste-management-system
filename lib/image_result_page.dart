@@ -88,7 +88,7 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
         List<dynamic> apiKeys = doc.data()!["https://open-ai21.p.rapidapi.com/conversationllama"];
 
         if (apiKeys.isEmpty) {
-          print("❌ No API keys available in Firestore.");
+          print("❌ No API keys available in Firestore");
           return null;
         }
 
