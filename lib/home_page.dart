@@ -1,4 +1,5 @@
 import 'package:ease/profile.dart';
+import 'package:ease/task.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -254,7 +255,7 @@ class HomePage extends StatelessWidget {
         } else if (title == "Daily Green Challenge") {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => WellnessPage()),
+            MaterialPageRoute(builder: (context) => TaskPage()),
           );
         }
       },

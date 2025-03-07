@@ -44,6 +44,8 @@ dependencies:
   firebase_performance: ^0.10.0+8
   carousel_slider: ^5.0.0
   geocoding: ^2.1.0
+  youtube_player_flutter: ^9.1.1
+  flutter_inappwebview: ^6.1.5
 dependency_overrides:
   intl: ^0.18.1
 
@@ -63,4 +65,5 @@ flutter:
   assets:
     - lib/assets/happy_earth.gif
     - lib/assets/ease.jpg
+    - lib/assets/loading.gif
 

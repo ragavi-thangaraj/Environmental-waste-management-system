@@ -1,13 +1,20 @@
+import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:confetti/confetti.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
+
+import 'help.dart';
 class DisposalPage extends StatefulWidget {
   final String responseText;
-  DisposalPage({required this.responseText});
+  final File image;
+  DisposalPage({required this.responseText,required this.image});
 
   @override
   _DisposalPageState createState() => _DisposalPageState();
@@ -15,18 +22,24 @@ class DisposalPage extends StatefulWidget {
 
 class _DisposalPageState extends State<DisposalPage> {
   late ConfettiController _confettiController;
+  final ScrollController _scrollController = ScrollController();
+  final PageController _pageController = PageController(viewportFraction: 0.9);
+  int _currentPage = 0;
+  bool showTasks = false;
   late String description;
   late List<String> tasks;
   Map<String, bool> completedTasks = {};
   int totalScore = 0;
-
+  int visibleLines = 4;
+  late List<String> youtubeLinks;
   @override
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: Duration(seconds: 2));
-
     Map<String, dynamic> extractedData = extractDescriptionAndTasks(widget.responseText);
     description = extractedData["description"];
+    youtubeLinks = extractYouTubeLinks(description);
+
     tasks = extractedData["tasks"];
 
     for (var task in tasks) {
@@ -37,8 +50,112 @@ class _DisposalPageState extends State<DisposalPage> {
   @override
   void dispose() {
     _confettiController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
+  void showMore() {
+    setState(() {
+      visibleLines += 4; // Increase the number of lines displayed
+    });
+  }
+  void toggleTasks() {
+    setState(() {
+      showTasks = !showTasks;
+    });
+  }
+
+  List<String> extractYouTubeLinks(String text) {
+    // Define a map of keywords to lists of YouTube video URLs.
+    Map<String, List<String>> keywordVideos = {
+      'aluminum': [
+        'https://www.youtube.com/shorts/4ZVpC1nfmzE',
+        'https://www.youtube.com/watch?v=_ItLfaO_WY0&pp=ygUcY3JhZnQgd29ya3Mgb24gYWx1bWluaXVtIGNhbg%3D%3D',
+        'https://www.youtube.com/watch?v=5XAFMEBiouQ&pp=ygUcY3JhZnQgd29ya3Mgb24gYWx1bWluaXVtIGNhbg%3D%3D',
+      ],
+      'paper': [
+        'https://www.youtube.com/shorts/rOQpYiU8y1M',
+        'https://www.youtube.com/shorts/rWF0YPzxwb8',
+        'https://www.youtube.com/shorts/7uYcSRMb5xE',
+        'https://www.youtube.com/watch?v=aaz4Qe6zYyU&pp=ygUZY3JhZnQgd29yayBvbiB3YXN0ZSBwYXBlcg%3D%3D',
+      ],
+      // Add more keyword mappings here if needed
+    };
+
+    // List to hold the results.
+    List<String> resultLinks = [];
+
+    // Check if the text contains any of the keywords and add the corresponding videos.
+    keywordVideos.forEach((keyword, links) {
+      if (text.toLowerCase().contains(keyword.toLowerCase())) {
+        resultLinks.addAll(links);
+      }
+    });
+
+    return resultLinks;
+  }
+
+  Future<Map<String, dynamic>?> _findNearestMunicipalOfficer(Position userPosition) async {
+    FirebaseFirestore firestore = FirebaseFirestore.instance;
+    List<Map<String, dynamic>> allOffices = [];
+
+    // List of documents to fetch data from
+    List<String> documents = ["erode", "perundurai"];
+
+    for (String doc in documents) {
+      DocumentSnapshot snapshot = await firestore.collection("municipal_office").doc(doc).get();
+
+      if (snapshot.exists) {
+        var data = snapshot.data() as Map<String, dynamic>?;
+
+        if (data != null && data.containsKey("municipal")) {
+          List<dynamic> municipalList = data["municipal"];
+
+          for (var office in municipalList) {
+            allOffices.add(office as Map<String, dynamic>);
+          }
+        }
+      }
+    }
+
+    // Find the nearest office
+    double minDistance = double.infinity;
+    Map<String, dynamic>? nearestOffice;
+
+    for (var office in allOffices) {
+      List<String> latLong = (office['latlong'] as String).split(',');
+      double officeLat = double.parse(latLong[0]);
+      double officeLong = double.parse(latLong[1]);
+
+      double distance = _calculateDistance(
+        userPosition.latitude,
+        userPosition.longitude,
+        officeLat,
+        officeLong,
+      );
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestOffice = office;
+      }
+    }
+
+    return nearestOffice;
+  }
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const double R = 6371; // Radius of the Earth in km
+    double dLat = _degToRad(lat2 - lat1);
+    double dLon = _degToRad(lon2 - lon1);
+    double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_degToRad(lat1)) * cos(_degToRad(lat2)) *
+            sin(dLon / 2) * sin(dLon / 2);
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  double _degToRad(double deg) {
+    return deg * (pi / 180);
+  }
+
 
   Map<String, dynamic> extractDescriptionAndTasks(String text) {
     List<String> lines = text.split("\n");
@@ -88,12 +205,18 @@ class _DisposalPageState extends State<DisposalPage> {
 
   void markTaskComplete(String task) {
     setState(() {
-      if (!completedTasks[task]!) {
+      if (completedTasks[task]!) {
+        // If task is already completed, deselect it and subtract points
+        completedTasks[task] = false;
+        totalScore -= calculatePoints(task);
+      } else {
+        // If task is not completed, mark it as complete and add points
         completedTasks[task] = true;
         totalScore += calculatePoints(task);
       }
     });
   }
+
 
   void handleCompletion() async {
     if (completedTasks.values.every((completed) => completed)) {
@@ -256,6 +379,18 @@ class _DisposalPageState extends State<DisposalPage> {
     );
   }
 
+  Future<Position> _getUserLocation() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.deniedForever) {
+        return Future.error("Location permissions are permanently denied.");
+      }
+    }
+
+    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -270,10 +405,8 @@ class _DisposalPageState extends State<DisposalPage> {
           ],
         ),
       ),
-      // Stack with a continuous light-themed background using ease.jpg and a white gradient overlay
       body: Stack(
         children: [
-          // Background image with gradient that starts pure white at the top and fades out
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -299,27 +432,13 @@ class _DisposalPageState extends State<DisposalPage> {
               ),
             ),
           ),
-          // Confetti widget at the top center for celebrations
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirection: -pi / 2,
-              emissionFrequency: 0.02,
-              numberOfParticles: 30,
-              maxBlastForce: 50,
-              minBlastForce: 20,
-              gravity: 0.1,
-            ),
-          ),
-          // Main content in a scrollable area
           Padding(
             padding: EdgeInsets.all(16),
             child: SingleChildScrollView(
+              controller: _scrollController,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Section Title with Icon
                   Row(
                     children: [
                       Icon(FontAwesomeIcons.leaf, color: Colors.green[800], size: 28),
@@ -329,81 +448,327 @@ class _DisposalPageState extends State<DisposalPage> {
                     ],
                   ),
                   SizedBox(height: 10),
-                  // Description text
-                  Text(
-                    description,
-                    style: TextStyle(fontSize: 16, color: Colors.grey[800]),
-                  ),
-                  SizedBox(height: 20),
-                  // Tasks Section Title
-                  Row(
-                    children: [
-                      Icon(FontAwesomeIcons.tasks, color: Colors.green[800], size: 28),
-                      SizedBox(width: 10),
-                      Text("Tasks to Complete",
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green[800])),
-                    ],
-                  ),
-                  SizedBox(height: 10),
-                  // List of tasks
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: tasks.length,
-                    itemBuilder: (context, index) {
-                      String task = tasks[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: GestureDetector(
-                          onTap: () => markTaskComplete(task),
-                          child: AnimatedContainer(
-                            duration: Duration(milliseconds: 600),
-                            curve: Curves.easeInOut,
-                            decoration: BoxDecoration(
-                              color: completedTasks[task]! ? Colors.greenAccent.withOpacity(0.7) : Colors.white.withOpacity(0.85),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: Colors.green.withOpacity(0.3)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.3),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: ListTile(
-                              leading: Icon(
-                                completedTasks[task]! ? Icons.check_circle : Icons.circle_outlined,
-                                color: Colors.green[800],
-                                size: 26,
+
+                  // Description with dynamic "Read More"
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final textSpan = TextSpan(
+                        text: description,
+                        style: TextStyle(fontSize: 16, color: Colors.grey[800]),
+                      );
+                      final textPainter = TextPainter(
+                        text: textSpan,
+                        maxLines: visibleLines,
+                        textDirection: TextDirection.ltr,
+                      )..layout(maxWidth: constraints.maxWidth);
+
+                      final isOverflowing = textPainter.didExceedMaxLines;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            description,
+                            style: TextStyle(fontSize: 16, color: Colors.grey[800]),
+                            maxLines: visibleLines,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (isOverflowing) // Show Read More button if text is overflowing
+                            TextButton(
+                              onPressed: showMore,
+                              child: Text(
+                                "Read More",
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[800]),
                               ),
-                              title: Text(
-                                task,
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.green[900]),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+
+                  SizedBox(height: 20),
+
+                  if (youtubeLinks.isNotEmpty) ...[
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header with title and icon
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Row(
+                            children: [
+                              Icon(FontAwesomeIcons.youtube, color: Colors.red, size: 28),
+                              const SizedBox(width: 10),
+                              Text(
+                                "Watch and Learn",
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        // Updated video container with glassmorphic effect
+                        Container(
+                          height: 280,
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24),
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withOpacity(0.15),
+                                Colors.white.withOpacity(0.05),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.2),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                              child: Stack(
+                                children: [
+                                  // Video carousel using PageView.builder
+                                  PageView.builder(
+                                    controller: _pageController,
+                                    itemCount: youtubeLinks.length,
+                                    itemBuilder: (context, index) {
+                                      String videoId = YoutubePlayer.convertUrlToId(youtubeLinks[index])!;
+                                      return Padding(
+                                        padding: const EdgeInsets.all(12.0),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(20),
+                                          child: YoutubePlayer(
+                                            controller: YoutubePlayerController(
+                                              initialVideoId: videoId,
+                                              flags: const YoutubePlayerFlags(
+                                                autoPlay: false,
+                                                mute: false,
+                                              ),
+                                            ),
+                                            showVideoProgressIndicator: true,
+                                            progressIndicatorColor: Colors.red,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    onPageChanged: (index) {
+                                      setState(() {
+                                        _currentPage = index;
+                                      });
+                                    },
+                                  ),
+                                  // Animated page indicator at the bottom
+                                  Positioned(
+                                    bottom: 16,
+                                    left: 0,
+                                    right: 0,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: List.generate(youtubeLinks.length, (index) {
+                                        return AnimatedContainer(
+                                          duration: const Duration(milliseconds: 300),
+                                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                                          width: _currentPage == index ? 12 : 8,
+                                          height: _currentPage == index ? 12 : 8,
+                                          decoration: BoxDecoration(
+                                            color: _currentPage == index ? Colors.redAccent : Colors.white54,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                  ),
+                                  // Header overlay with a title
+                                  Positioned(
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.black.withOpacity(0.6),
+                                            Colors.transparent,
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                        borderRadius: const BorderRadius.only(
+                                          topLeft: Radius.circular(24),
+                                          topRight: Radius.circular(24),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        "Featured Videos",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                  SizedBox(height: 20),
-                  // Completion button centered
-                  Center(
-                    child: ElevatedButton.icon(
-                      onPressed: handleCompletion,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.95),
-                        foregroundColor: Colors.green[900],
-                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        shadowColor: Colors.black45,
-                        elevation: 5,
-                      ),
-                      icon: Icon(Icons.done, size: 24),
-                      label: Text("Mark as Complete", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        // Animated page indicators
+                      ],
                     ),
+                  ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          toggleTasks(); // This should show the tasks section
+                          Future.delayed(Duration(milliseconds: 300), () {
+                            _scrollController.animateTo(
+                              _scrollController.position.maxScrollExtent,
+                              duration: Duration(milliseconds: 600),
+                              curve: Curves.easeInOut,
+                            );
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[800],
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 5,
+                        ),
+                        icon: Icon(Icons.cleaning_services, size: 24),
+                        label: Text("Clean", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          Position userPosition = await _getUserLocation();
+                          Map<String, dynamic>? nearestOfficer = await _findNearestMunicipalOfficer(userPosition);
+
+                          if (nearestOfficer != null) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => HelpPage(nearestOfficer: nearestOfficer,image:widget.image,text:description),
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange[800],
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 5,
+                        ),
+                        icon: Icon(Icons.help_outline, size: 24),
+                        label: Text("Help", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
+
+                  SizedBox(height: 20),
+
+                  // Show tasks only if "Clean" is pressed
+                  AnimatedSwitcher(
+                    duration: Duration(milliseconds: 500),
+                    child: showTasks
+                        ? Column(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(FontAwesomeIcons.tasks, color: Colors.green[800], size: 28),
+                            SizedBox(width: 10),
+                            Text(
+                              "Tasks to Complete",
+                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green[800]),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 10),
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount: tasks.length,
+                          itemBuilder: (context, index) {
+                            String task = tasks[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: GestureDetector(
+                                onTap: () => markTaskComplete(task),
+                                child: AnimatedContainer(
+                                  duration: Duration(milliseconds: 600),
+                                  curve: Curves.easeInOut,
+                                  decoration: BoxDecoration(
+                                    color: completedTasks[task]!
+                                        ? Colors.greenAccent.withOpacity(0.7)
+                                        : Colors.white.withOpacity(0.85),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.green.withOpacity(0.3)),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.grey.withOpacity(0.3),
+                                        blurRadius: 6,
+                                        offset: Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ListTile(
+                                    leading: Icon(
+                                      completedTasks[task]!
+                                          ? Icons.check_circle
+                                          : Icons.circle_outlined,
+                                      color: Colors.green[800],
+                                      size: 26,
+                                    ),
+                                    title: Text(
+                                      task,
+                                      style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.green[900]
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        SizedBox(height: 20,),
+                        Center(
+                          child: ElevatedButton.icon(
+                            onPressed: handleCompletion,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white.withOpacity(0.95),
+                              foregroundColor: Colors.green[900],
+                              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shadowColor: Colors.black45,
+                              elevation: 5,
+                            ),
+                            icon: Icon(Icons.done, size: 24),
+                            label: Text("Mark as Complete", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        SizedBox(height: 30),
+                      ],
+                    )
+                        : SizedBox.shrink(),
+                  ),
+
                   SizedBox(height: 30),
                 ],
               ),

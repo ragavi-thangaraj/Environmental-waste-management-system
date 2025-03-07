@@ -3,6 +3,8 @@ import 'package:ease/main.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Profile Page with improved UI and no profile photo edit
 class ProfilePage extends StatefulWidget {
@@ -24,13 +26,24 @@ class _ProfilePageState extends State<ProfilePage> {
     return {};
   }
 
-  void _logout() async {
+  void _logout(BuildContext context) async {
+    // Sign out from FirebaseAuth.
     await FirebaseAuth.instance.signOut();
+
+    // Sign out from GoogleSignIn.
+    final GoogleSignIn googleSignIn = GoogleSignIn();
+    await googleSignIn.signOut();
+    await googleSignIn.disconnect();
+
+    // Clear app data from SharedPreferences.
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    // Navigate to the starting screen.
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (context) => MyApp()),
     );
   }
-
   // Navigate to the Edit Profile page
   void _editProfile(Map<String, dynamic> userData) {
     Navigator.push(
@@ -108,7 +121,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             IconButton(
                               icon: Icon(Icons.logout, color: Colors.white),
-                              onPressed: _logout,
+                              onPressed: () {
+                                _logout(context);
+                              },
                             ),
                           ],
                         ),
@@ -164,8 +179,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 // Edit Profile button
                                 ElevatedButton.icon(
                                   onPressed: () => _editProfile(userData),
-                                  icon: Icon(Icons.edit),
-                                  label: Text("Edit Profile"),
+                                  icon: Icon(Icons.edit,color: Colors.white,),
+                                  label: Text("Edit Profile",style: (TextStyle(color: Colors.white)),),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green,
                                     padding: EdgeInsets.symmetric(
@@ -293,53 +308,97 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Edit Profile"),
+        title: Text("Edit Profile",style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold),),
         backgroundColor: Colors.green,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Name Field
-              TextFormField(
-                initialValue: _name,
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
-                ),
-                onSaved: (value) => _name = value!,
-                validator: (value) =>
-                value == null || value.isEmpty ? "Enter your name" : null,
-              ),
-              SizedBox(height: 20),
-              // Phone Field
-              TextFormField(
-                initialValue: _phone,
-                decoration: InputDecoration(
-                  labelText: 'Phone',
-                  border: OutlineInputBorder(),
-                ),
-                onSaved: (value) => _phone = value!,
-                validator: (value) =>
-                value == null || value.isEmpty ? "Enter your phone number" : null,
-              ),
-              SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: _saveProfile,
-                child: Text("Save Changes",style:TextStyle(color: Colors.white),),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  padding:
-                  EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
-                  textStyle:
-                  TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      body: Stack(
+        children: [
+          // Background image with white fading effect.
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('lib/assets/ease.jpg'),
+                  fit: BoxFit.cover,
                 ),
               ),
-            ],
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withOpacity(0.8),
+                      Colors.white.withOpacity(0.3)
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
+          // Form content.
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(height: 20),
+                  // Name Field
+                  TextFormField(
+                    initialValue: _name,
+                    decoration: InputDecoration(
+                      labelText: 'Name',
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.9),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onSaved: (value) => _name = value!,
+                    validator: (value) =>
+                    value == null || value.isEmpty ? "Enter your name" : null,
+                  ),
+                  SizedBox(height: 20),
+                  // Phone Field
+                  TextFormField(
+                    initialValue: _phone,
+                    decoration: InputDecoration(
+                      labelText: 'Phone',
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.9),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onSaved: (value) => _phone = value!,
+                    validator: (value) => value == null || value.isEmpty
+                        ? "Enter your phone number"
+                        : null,
+                  ),
+                  SizedBox(height: 30),
+                  ElevatedButton(
+                    onPressed: _saveProfile,
+                    child: Text(
+                      "Save Changes",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
+                      textStyle:
+                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

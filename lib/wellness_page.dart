@@ -94,11 +94,16 @@ class _WellnessPageState extends State<WellnessPage> {
       setState(() {
         _selectedImage = File(pickedFile.path);
         _imageDescription = null;
-        _isLoading = true;
+        _isLoading = true; // Set loading state
       });
-      await _fetchImageDescription(_selectedImage!);
+
+      // Wait for the frame to render the loading indicator
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _fetchImageDescription(_selectedImage!);
+      });
     }
   }
+
 
   Future<String?> _fetchAPIKey() async {
     try {
@@ -182,7 +187,9 @@ class _WellnessPageState extends State<WellnessPage> {
           }
         };
 
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false; // Ensure UI updates correctly
+        });
 
         Navigator.push(
           context,
@@ -259,11 +266,19 @@ class _WellnessPageState extends State<WellnessPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(color: Colors.greenAccent),
+                      // Loading GIF
+                      Image.asset(
+                        'lib/assets/loading.gif',
+                        width: 120,
+                        height: 120,
+                      ),
                       SizedBox(height: 20),
                       Text(
                         "Analyzing Image...",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white),
                       ),
                     ],
                   ),

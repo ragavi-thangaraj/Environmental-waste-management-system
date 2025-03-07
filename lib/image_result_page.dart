@@ -151,7 +151,7 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
       "Identify the product based on these labels: ${_labels.join(", ")}. Discuss its health benefits and potential risks when used or consumed. Address common concerns people face regarding safety, allergies, or long-term effects. Avoid unnecessary introductory phrases and provide direct, clear information and explain in detail with needed measure to be taken";
     } else {
       formattedQuery =
-      "Recognizing the product from these labels: ${_labels.join(", ")}, explain the correct disposal methods. Provide clear, easy-to-follow steps that ensure environmental safety. Use simple language so even an 8-year-old can understand how to dispose of it properly without harming nature. Do not include phrases like 'Below is' or 'Here is'; deliver the information directly and explain in detail after explaining give me the task needed to be done to dispose them mention those task seperatedly as Task to be taken followed by the task only in bulletin";
+      "Recognizing the product from these labels: ${_labels.join(", ")}, explain the correct disposal methods. Provide clear, easy-to-follow steps that ensure environmental safety and also provide some craft work ideas as Task .Use simple language so even an 8-year-old can understand how to dispose of it properly without harming nature. Do not include phrases like 'Below is' or 'Here is'; deliver the information directly and explain in detail after explaining give me the task needed to be done to dispose them mention those task seperatedly as Task to be taken followed by the task only in bulletin";
     }
 
     setState(() {
@@ -219,30 +219,43 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
             backgroundColor: Colors.green[900],
             elevation: 10,
             pinned: true,
-            expandedHeight: 250,
-            title: innerBoxIsScrolled
-                ? Center(
-              child: Text(
-                "Product Analysis",
-                style: TextStyle(
-                  fontWeight: FontWeight.w600, // Bolder text
-                  fontSize: 24, // Slightly larger
-                  letterSpacing: 1.2, // Better readability
-                  shadows: [
-                    Shadow(blurRadius: 6, color: Colors.black87, offset: Offset(2, 2)), // Enhanced shadow
-                  ],
-                  foreground: Paint() // Gradient effect
-                    ..shader = LinearGradient(
-                      colors: [Colors.greenAccent, Colors.white], // Gradient colors
-                    ).createShader(Rect.fromLTWH(0, 0, 200, 40)),
-                ),
-                textAlign: TextAlign.center, // Center align text
+            expandedHeight: 280,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(
+                bottom: Radius.circular(30),
               ),
-            )
-
-                : null, // Only show title when scrolled
+            ),
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: EdgeInsets.only(left: 16, bottom: 16),
+              centerTitle: true,
+              title: innerBoxIsScrolled
+                  ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Product Analysis",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                      letterSpacing: 1.2,
+                      foreground: Paint()
+                        ..shader = LinearGradient(
+                          colors: [Colors.greenAccent, Colors.white],
+                        ).createShader(Rect.fromLTWH(0, 0, 200, 40)),
+                      shadows: [
+                        Shadow(
+                          blurRadius: 6,
+                          color: Colors.black87,
+                          offset: Offset(2, 2),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 4),
+                ],
+              )
+                  : null,
               background: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -253,17 +266,18 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withOpacity(0.4), // Darker top for readability
+                          Colors.black.withOpacity(0.5),
                           Colors.transparent,
-                          Colors.green[900]!.withOpacity(0.6), // Green tint at the bottom
+                          Colors.green[900]!.withOpacity(0.7),
                         ],
+                        stops: [0.0, 0.5, 1.0],
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-          )
+          ),
         ],
         body: Column(
           children: [
@@ -362,7 +376,7 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => DisposalPage(responseText: _responseText),
+                                    builder: (context) => DisposalPage(responseText: _responseText,image:widget.image),
                                   ),
                                 );
                               },
