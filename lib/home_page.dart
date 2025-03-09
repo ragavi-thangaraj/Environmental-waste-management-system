@@ -10,35 +10,150 @@ class HomePage extends StatelessWidget {
   final User user;
   HomePage({required this.user});
 
+  // Method to show the language selection dialog.
+  void _showLanguageDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 10,
+          backgroundColor: Colors.transparent,
+          child: _buildLanguageDialogContent(context),
+        );
+      },
+    );
+  }
+
+  Widget _buildLanguageDialogContent(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.rectangle,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10.0,
+            offset: Offset(0.0, 10.0),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            "Select Your Language",
+            style: TextStyle(
+              fontSize: 22.0,
+              fontWeight: FontWeight.w600,
+              color: Colors.green[800],
+            ),
+          ),
+          const SizedBox(height: 16.0),
+          const Divider(thickness: 1),
+          const SizedBox(height: 8),
+          ListTile(
+            leading:
+            const Icon(Icons.sort_by_alpha_sharp, color: Colors.green),
+            title: const Text("English"),
+            onTap: () {
+              _updateLanguage("English");
+              Navigator.of(context).pop();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.language, color: Colors.green),
+            title: const Text("தமிழ்"),
+            onTap: () {
+              _updateLanguage("Tamil");
+              Navigator.of(context).pop();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.translate, color: Colors.green),
+            title: const Text("हिन्दी"),
+            onTap: () {
+              _updateLanguage("Hindi");
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Method to update the language in the 'users' collection.
+  void _updateLanguage(String language) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .update({'language': language});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 1) Light-themed AppBar
+      // AppBar with a language icon on the left.
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.translate, color: Colors.green[900]),
+          onPressed: () => _showLanguageDialog(context),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.home, color: Colors.green[900], size: 28),
-            SizedBox(width: 8),
-            Text(
-              "Our Home",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: Colors.green[900],
-              ),
-            ),
-          ],
+        title: StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Text(
+                "Our Home",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: Colors.green,
+                ),
+              );
+            }
+            final userData =
+                snapshot.data!.data() as Map<String, dynamic>? ?? {};
+            // Get stored language; default to English.
+            String language = userData['language'] ?? "English";
+            // Translations for AppBar title.
+            Map<String, String> appBarTranslations = {
+              "English": "Our Home",
+              "Tamil": "எங்கள் வீடு",
+              "Hindi": "हमारा घर",
+            };
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.home, color: Colors.green[900], size: 28),
+                const SizedBox(width: 8),
+                Text(
+                  appBarTranslations[language]!,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: Colors.green[900],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         iconTheme: IconThemeData(color: Colors.green[900]),
         actions: [
           IconButton(
             icon: Icon(Icons.person, color: Colors.green[900]),
             onPressed: () {
-              // Navigate to the profile page
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => ProfilePage()),
@@ -48,18 +163,18 @@ class HomePage extends StatelessWidget {
         ],
       ),
 
-
-      // 2) Main Body
-      body: FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+      // The rest of your HomePage body.
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .snapshots(),
         builder: (context, snapshot) {
-          // Loading indicator
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
-          // Error / no data
           if (!snapshot.hasData || snapshot.data == null) {
-            return Center(
+            return const Center(
               child: Text(
                 "No user data found!",
                 style: TextStyle(color: Colors.black87),
@@ -67,10 +182,50 @@ class HomePage extends StatelessWidget {
             );
           }
 
-          // Once data is loaded, build the UI with a Stack
+          final userData =
+              snapshot.data!.data() as Map<String, dynamic>? ?? {};
+          // Get the stored language; default to English.
+          String language = userData['language'] ?? "English";
+
+          // Define translations for various text keys.
+          Map<String, Map<String, String>> translations = {
+            "English": {
+              "savingEarth": "Saving Earth, One Step at a Time",
+              "subtext": "Take a step today towards a greener future 🌿🌍",
+              "card1Title": "Recycle rather than dump!",
+              "card1Subtitle": "Discover ways to live sustainably.",
+              "card2Title": "Wellness & Environment",
+              "card2Subtitle": "Stay healthy while saving the planet.",
+              "card3Title": "Daily Green Challenge",
+              "card3Subtitle": "A new challenge every day!",
+            },
+            "Tamil": {
+              "savingEarth": "பூமியை பாதுகாக்க, ஒவ்வொரு படியிலும்",
+              "subtext": "இன்று ஒரு படி முன்னேறி பசுமையான எதிர்காலத்தை நோக்கி",
+              "card1Title": "குப்பையை தூக்காமல் மறுசுழற்சி செய்யுங்கள்!",
+              "card1Subtitle": "சூழல் பாதுகாப்பு வாழ்வு வழிகளை கண்டறியுங்கள்.",
+              "card2Title": "நலம் & சூழல்",
+              "card2Subtitle": "பூமியை பாதுகாக்கும் போது ஆரோக்கியமாக இருங்கள்.",
+              "card3Title": "தினசரி பசுமை சவால்",
+              "card3Subtitle": "ஒவ்வொரு நாளும் ஒரு புதிய சவால்!",
+            },
+            "Hindi": {
+              "savingEarth": "एक कदम में पृथ्वी बचाएं",
+              "subtext": "आज हरित भविष्य की ओर एक कदम बढ़ाएं",
+              "card1Title": "कचरे को फेंकने के बजाय रिसाइकिल करें!",
+              "card1Subtitle": "सतत जीवन जीने के तरीके खोजें।",
+              "card2Title": "स्वास्थ्य & पर्यावरण",
+              "card2Subtitle": "पृथ्वी बचाते हुए स्वस्थ रहें।",
+              "card3Title": "दैनिक हरित चुनौती",
+              "card3Subtitle": "हर दिन एक नई चुनौती!",
+            },
+          };
+
+          // Choose translations based on user's language.
+          Map<String, String> currentTrans = translations[language]!;
+
           return Stack(
             children: [
-              // 3) Background image behind everything
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -85,32 +240,31 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // 4) Foreground: Scrollable content
               SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // A) Top portion: fully white background
                     Container(
                       color: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                       child: Column(
                         children: [
-                          // Top Profile/Logo Section
                           CircleAvatar(
                             radius: 50,
                             backgroundColor: Colors.white,
                             backgroundImage: NetworkImage(
                               'https://img.myloview.com/plakaty/mother-earth-day-and-world-environment-day-concept-with-hand-holding-earth-planet-700-198028430.jpg',
                             ),
-                            onBackgroundImageError: (_, __) =>
-                                Icon(Icons.image, size: 50, color: Colors.grey),
+                            onBackgroundImageError: (_, __) => const Icon(
+                              Icons.image,
+                              size: 50,
+                              color: Colors.grey,
+                            ),
                           ),
-                          SizedBox(height: 16),
-
+                          const SizedBox(height: 16),
                           Text(
-                            "Saving Earth, One Step at a Time",
+                            currentTrans["savingEarth"]!,
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -118,35 +272,32 @@ class HomePage extends StatelessWidget {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
-                            "Take a step today towards a greener future 🌿🌍",
-                            style: TextStyle(fontSize: 15, color: Colors.grey[700]),
+                            currentTrans["subtext"]!,
+                            style: TextStyle(
+                                fontSize: 15, color: Colors.grey[700]),
                             textAlign: TextAlign.center,
                           ),
                         ],
                       ),
                     ),
-
-                    // B) Fading container: from white (top) to transparent (bottom)
                     Container(
-                      // This gradient will fade out the white to show the background
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         gradient: LinearGradient(
                           colors: [Colors.white, Colors.transparent],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                         ),
                       ),
-                      // Some padding on top to space the fade below your text
-                      padding: EdgeInsets.only(top: 24, left: 16, right: 16),
+                      padding: const EdgeInsets.only(
+                          top: 24, left: 16, right: 16),
                       child: Column(
                         children: [
-                          // 5) Grid of cards
                           GridView.count(
-                            crossAxisCount: 2, // Exactly 2 cards per row
+                            crossAxisCount: 2,
                             shrinkWrap: true,
-                            physics: NeverScrollableScrollPhysics(),
+                            physics: const NeverScrollableScrollPhysics(),
                             mainAxisSpacing: 16,
                             crossAxisSpacing: 16,
                             childAspectRatio: 0.75,
@@ -156,10 +307,12 @@ class HomePage extends StatelessWidget {
                                 _buildFeatureCard(
                                   context,
                                   Icons.eco,
-                                  "Recycle rather than dump!",
-                                  "Discover ways to live sustainably.",
+                                  "recycle",
+                                  currentTrans["card1Title"]!,
+                                  currentTrans["card1Subtitle"]!,
                                   Colors.green[100]!,
                                   Colors.green[800]!,
+                                  language
                                 ),
                               ),
                               _buildCardWithBackground(
@@ -167,10 +320,12 @@ class HomePage extends StatelessWidget {
                                 _buildFeatureCard(
                                   context,
                                   Icons.nature_people,
-                                  "Wellness & Environment",
-                                  "Stay healthy while saving the planet.",
+                                  "wellness",
+                                  currentTrans["card2Title"]!,
+                                  currentTrans["card2Subtitle"]!,
                                   Colors.orange[100]!,
                                   Colors.orange[800]!,
+                                  language
                                 ),
                               ),
                               _buildCardWithBackground(
@@ -178,16 +333,17 @@ class HomePage extends StatelessWidget {
                                 _buildFeatureCard(
                                   context,
                                   Icons.track_changes,
-                                  "Daily Green Challenge",
-                                  "A new challenge every day!",
+                                  "daily",
+                                  currentTrans["card3Title"]!,
+                                  currentTrans["card3Subtitle"]!,
                                   Colors.blue[100]!,
                                   Colors.blue[800]!,
+                                  language
                                 ),
                               ),
                             ],
                           ),
-
-                          SizedBox(height: 30),
+                          const SizedBox(height: 30),
                         ],
                       ),
                     ),
@@ -201,7 +357,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // (Optional) Wraps a card with its own background (currently minimal)
+  // Helper method to wrap a card with its own background.
   Widget _buildCardWithBackground(BuildContext context, Widget card) {
     return Container(
       decoration: BoxDecoration(
@@ -219,40 +375,50 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // Card UI with a curved accent in the top-right corner
+  // Updated feature card widget with an extra identifier parameter.
   Widget _buildFeatureCard(
       BuildContext context,
       IconData icon,
+      String cardIdentifier,
       String title,
       String subtitle,
       Color bgColor,
       Color iconColor,
+      String language, // New parameter for language
       ) {
-    // Determine the accent icon based on the title
+    // Choose accent icon based on identifier.
     IconData accentIcon;
-    if (title == "Recycle rather than dump!") {
-      accentIcon = Icons.recycling;
-    } else if (title == "Wellness & Environment") {
-      accentIcon = Icons.spa;
-    } else if (title == "Daily Green Challenge") {
-      accentIcon = Icons.fitness_center;
-    } else {
-      accentIcon = icon;
+    switch (cardIdentifier) {
+      case "recycle":
+        accentIcon = Icons.autorenew;
+        break;
+      case "wellness":
+        accentIcon = Icons.spa;
+        break;
+      case "daily":
+        accentIcon = Icons.fitness_center;
+        break;
+      default:
+        accentIcon = icon;
     }
+
+    // Adjust font sizes for Tamil.
+    double titleFontSize = language == "Tamil" ? 14 : 16;
+    double subtitleFontSize = language == "Tamil" ? 11 : 13;
 
     return GestureDetector(
       onTap: () {
-        if (title == "Wellness & Environment") {
+        if (cardIdentifier == "wellness") {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => WellnessPage()),
           );
-        } else if (title == "Recycle rather than dump!") {
+        } else if (cardIdentifier == "recycle") {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => RecyclingSearchPage()),
           );
-        } else if (title == "Daily Green Challenge") {
+        } else if (cardIdentifier == "daily") {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => TaskPage()),
@@ -260,8 +426,8 @@ class HomePage extends StatelessWidget {
         }
       },
       child: Container(
-        margin: EdgeInsets.all(8),
-        padding: EdgeInsets.all(16),
+        margin: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white, // Card background
           borderRadius: BorderRadius.circular(16),
@@ -269,14 +435,14 @@ class HomePage extends StatelessWidget {
             BoxShadow(
               color: Colors.grey.withOpacity(0.15),
               blurRadius: 8,
-              offset: Offset(0, 4),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            // Curved accent in the top-right corner with the accent icon
+            // Curved accent in the top-right corner.
             Positioned(
               top: -15,
               right: -15,
@@ -296,7 +462,7 @@ class HomePage extends StatelessWidget {
                 ),
               ),
             ),
-            // Card content: Icon, Title & Subtitle
+            // Card content.
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -309,19 +475,22 @@ class HomePage extends StatelessWidget {
                   ),
                   child: Icon(icon, color: iconColor),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text(
                   title,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: titleFontSize,
                     color: Colors.black87,
                   ),
                 ),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  style: TextStyle(
+                    fontSize: subtitleFontSize,
+                    color: Colors.grey[700],
+                  ),
                 ),
               ],
             ),

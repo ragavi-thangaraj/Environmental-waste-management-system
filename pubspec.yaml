@@ -72,4 +72,13 @@ flutter:
     - lib/assets/paper.png
     - lib/assets/earth.gif
     - lib/assets/plasticbottle.png
+    - lib/assets/yolov8n_float32.tflite
+    - lib/assets/park.jpg
+    - lib/assets/boy.jpg
+    - lib/assets/eco.gif
+    - lib/assets/fail.gif
+    - lib/assets/success.gif
+    - lib/assets/art1.jpg
+    - lib/assets/art2.jpg
+    - lib/assets/art3.jpg
 

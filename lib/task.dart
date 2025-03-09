@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:ease/task2.dart';
 import 'package:ease/task3.dart';
 import 'package:ease/task4.dart';
+import 'package:ease/task5.dart';
+import 'package:ease/task6.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -182,8 +184,7 @@ class _TaskPageState extends State<TaskPage>
           transitionDuration: const Duration(milliseconds: 500),
         );
       }
-    } else if (level == 4){
-      // Get the current user.
+    } else if (level == 4) {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -229,27 +230,144 @@ class _TaskPageState extends State<TaskPage>
           );
           return;
         }
-      } else {
-        // No previous submission: navigate to the Mini Garden task screen.
-        route = PageRouteBuilder(
-          pageBuilder: (_, __, ___) => RecyclingSortingGameScreen(),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
-          transitionDuration: const Duration(milliseconds: 500),
-        );
       }
-    }  else {
+      // Navigate to the Recycling Sorting Game screen.
+      else {
+      route = PageRouteBuilder(
+        pageBuilder: (_, __, ___) => RecyclingSortingGameScreen(),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 500),
+      );
+    }
+    }
+    else if (level == 5) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("User not logged in.")),
+        );
+        return;
+      }
+
+      // Check existing submission in 'verify' collection
+      final submissionSnapshot = await FirebaseFirestore.instance
+          .collection("verify")
+          .where("userId", isEqualTo: currentUser.uid)
+          .where("level", isEqualTo: 5)
+          .get();
+
+      if (submissionSnapshot.docs.isNotEmpty) {
+        final doc = submissionSnapshot.docs.first;
+        final status = doc.data()["status"];
+
+        if (status == "Not Confirmed") {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: _buildReviewDialogContent(context),
+            ),
+          );
+          return;
+        } else if (status == "Confirmed") {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: _buildCustomConfirmationDialog(context),
+            ),
+          );
+          return;
+        }
+      }
+
+      // ✅ Open EcoFriendlyArtScreen directly without extra function call
+      route = PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const EcoFriendlyArtScreen(),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 500),
+      );
+    }
+    else if (level == 6) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("User not logged in.")),
+        );
+        return;
+      }
+
+      // Check existing submission in 'verify' collection
+      final submissionSnapshot = await FirebaseFirestore.instance
+          .collection("verify")
+          .where("userId", isEqualTo: currentUser.uid)
+          .where("level", isEqualTo: 6)
+          .get();
+
+      if (submissionSnapshot.docs.isNotEmpty) {
+        final doc = submissionSnapshot.docs.first;
+        final status = doc.data()["status"];
+
+        if (status == "Not Confirmed") {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: _buildReviewDialogContent(context),
+            ),
+          );
+          return;
+        } else if (status == "Confirmed") {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: _buildCustomConfirmationDialog(context),
+            ),
+          );
+          return;
+        }
+      }
+
+      // ✅ Open EcoFriendlyArtScreen directly without extra function call
+      route = PageRouteBuilder(
+        pageBuilder: (_, __, ___) => TrashCollectGame(),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 500),
+      );
+    }
+    else {
       // For future levels (other than 1, 2, 3, or 4)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Level $level selected - coming soon.")),
       );
       return;
     }
+
+    // Only push the route if it has been assigned.
     if (route != null) {
       Navigator.push(context, route);
     }
   }
-
 
   Widget _buildReviewDialogContent(BuildContext context) {
     return Container(
