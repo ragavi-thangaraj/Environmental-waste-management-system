@@ -42,6 +42,7 @@ dependencies:
   http_parser: ^4.0.2
   share_plus: ^10.1.3
   firebase_performance: ^0.10.0+8
+  flutter_tts: ^4.2.2
   carousel_slider: ^5.0.0
   geocoding: ^2.1.0
   youtube_player_flutter: ^9.1.1
@@ -66,4 +67,9 @@ flutter:
     - lib/assets/happy_earth.gif
     - lib/assets/ease.jpg
     - lib/assets/loading.gif
+    - lib/assets/banana.png
+    - lib/assets/glass.png
+    - lib/assets/paper.png
+    - lib/assets/earth.gif
+    - lib/assets/plasticbottle.png
 

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:ease/task2.dart';
+import 'package:ease/task3.dart';
+import 'package:ease/task4.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -10,33 +12,28 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Task {
   final int level;
   bool isUnlocked;
   bool isCompleted;
-
-  Task({
-    required this.level,
-    this.isUnlocked = false,
-    this.isCompleted = false,
-  });
+  Task({required this.level, this.isUnlocked = false, this.isCompleted = false});
 }
-
 class TaskPage extends StatefulWidget {
   const TaskPage({Key? key}) : super(key: key);
-
   @override
   _TaskPageState createState() => _TaskPageState();
 }
-
-class _TaskPageState extends State<TaskPage> {
+class _TaskPageState extends State<TaskPage>
+    with SingleTickerProviderStateMixin {
   // Example: 10 tasks
   List<Task> tasks = List.generate(
     10,
-        (index) => Task(level: index + 1, isUnlocked: false, isCompleted: false),
+        (index) => Task(level: index + 1),
   );
 
   StreamSubscription? _verifySubscription;
+  late AnimationController _bgAnimationController;
 
   @override
   void initState() {
@@ -46,11 +43,18 @@ class _TaskPageState extends State<TaskPage> {
         .collection('verify')
         .snapshots()
         .listen((_) => _updateUnlockedLevels());
+
+    // Animate background gradient
+    _bgAnimationController = AnimationController(
+      duration: const Duration(seconds: 8),
+      vsync: this,
+    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _verifySubscription?.cancel();
+    _bgAnimationController.dispose();
     super.dispose();
   }
 
@@ -58,6 +62,7 @@ class _TaskPageState extends State<TaskPage> {
   Future<void> _updateUnlockedLevels() async {
     QuerySnapshot snapshot = await FirebaseFirestore.instance
         .collection('verify')
+        .where('userId',isEqualTo: FirebaseAuth.instance.currentUser!.uid)
         .where('status', isEqualTo: 'Confirmed')
         .get();
 
@@ -72,15 +77,14 @@ class _TaskPageState extends State<TaskPage> {
     setState(() {
       for (var task in tasks) {
         if (task.level <= maxConfirmedLevel) {
-          // Levels <= maxConfirmedLevel are completed.
+          // Completed levels.
           task.isUnlocked = true;
           task.isCompleted = true;
         } else if (task.level == maxConfirmedLevel + 1) {
-          // The immediate next level is unlocked, but not completed.
+          // Next level unlocked.
           task.isUnlocked = true;
           task.isCompleted = false;
         } else {
-          // All others remain locked.
           task.isUnlocked = false;
           task.isCompleted = false;
         }
@@ -102,27 +106,285 @@ class _TaskPageState extends State<TaskPage> {
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    // Simulate a short delay
-    await Future.delayed(const Duration(seconds: 2));
+    // Simulate delay
+    await Future.delayed(const Duration(seconds: 1));
     Navigator.pop(context);
 
-    // Navigate to the correct screen
+    PageRouteBuilder? route;
+
     if (level == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => NeighborhoodLitterPatrolScreen()),
+      route = PageRouteBuilder(
+        pageBuilder: (_, __, ___) => NeighborhoodLitterPatrolScreen(),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 500),
       );
     } else if (level == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => UpcyclingChallengeScreen()),
+      route = PageRouteBuilder(
+        pageBuilder: (_, __, ___) => UpcyclingChallengeScreen(),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 500),
+      );
+    } else if (level == 3) {
+      // Get the current user.
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("User not logged in.")),
+        );
+        return;
+      }
+
+      // Check if a submission for level 3 already exists.
+      final submissionSnapshot = await FirebaseFirestore.instance
+          .collection("verify")
+          .where("userId", isEqualTo: currentUser.uid)
+          .where("level", isEqualTo: 3)
+          .get();
+
+      if (submissionSnapshot.docs.isNotEmpty) {
+        final doc = submissionSnapshot.docs.first;
+        final status = doc.data()["status"];
+        if (status == "Not Confirmed") {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: _buildReviewDialogContent(context),
+            ),
+          );
+          return;
+        } else if (status == "Confirmed") {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: _buildCustomConfirmationDialog(context),
+            ),
+          );
+          return;
+        }
+      } else {
+        // No previous submission: navigate to the Mini Garden task screen.
+        route = PageRouteBuilder(
+          pageBuilder: (_, __, ___) => MiniGardenTaskScreen(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+          transitionDuration: const Duration(milliseconds: 500),
+        );
+      }
+    } else if (level == 4) {
+      // For level 4, verify the submission's status in the verify collection.
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("User not logged in.")),
+        );
+        return;
+      }
+
+      final submissionSnapshot = await FirebaseFirestore.instance
+          .collection("verify")
+          .where("userId", isEqualTo: currentUser.uid)
+          .where("level", isEqualTo: 4)
+          .get();
+
+      if (submissionSnapshot.docs.isNotEmpty) {
+        final doc = submissionSnapshot.docs.first;
+        final status = doc.data()["status"];
+        if (status != "Confirmed") {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Level 4 submission is not confirmed yet.")),
+          );
+          return;
+        }
+      } else {
+        // Optionally, if no submission exists, you can show a message or prevent navigation.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("No submission found for Level 4.")),
+        );
+        return;
+      }
+
+      // If submission exists and is Confirmed, navigate to the Recycling Sorting Game screen.
+      route = PageRouteBuilder(
+        pageBuilder: (_, __, ___) => RecyclingSortingGameScreen(),
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 500),
       );
     } else {
-      // Future implementation for higher levels
-      print("Level $level selected - Future implementation pending.");
+      // For future levels (other than 1, 2, 3, or 4)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Level $level selected - coming soon.")),
+      );
+      return;
+    }
+
+    // Only push the route if it has been assigned.
+    if (route != null) {
+      Navigator.push(context, route);
     }
   }
 
+
+  Widget _buildReviewDialogContent(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        image: DecorationImage(
+          image: AssetImage("lib/assets/ease.jpg"),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.white.withOpacity(0.4),
+            BlendMode.dstATop,
+          ),
+        ),
+        gradient: LinearGradient(
+          colors: [Colors.green.shade50, Colors.green.shade200],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.hourglass_top,
+            size: 80,
+            color: Colors.green.shade700,
+          ),
+          SizedBox(height: 10),
+          Text(
+            "Submission Under Review",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.green.shade900,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 10),
+          Text(
+            "Your Mini Garden task submission is currently under verification. Please check back later for confirmation.",
+            style: TextStyle(
+              fontSize: 16,
+              fontStyle: FontStyle.italic,
+              color: Colors.green.shade800,
+              fontWeight: FontWeight.bold
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade700,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+            ),
+            child: Text(
+              "OK",
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _buildCustomConfirmationDialog(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        // Background image with a white fading effect.
+        image: DecorationImage(
+          image: AssetImage("lib/assets/ease.jpg"),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.white.withOpacity(0.6),
+            BlendMode.dstATop,
+          ),
+        ),
+        // A subtle green gradient overlay.
+        gradient: LinearGradient(
+          colors: [Colors.green.shade50, Colors.green.shade100],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            "Task Confirmed!",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.green.shade900,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 10),
+          Text(
+            "Thank you for being a part of keeping our environment tidy and clean. Your points have been added to your piggy bank. Enjoy your day!",
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.green.shade800,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade700,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+            ),
+            child: Text(
+              "OK",
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   void _showLockedLevelDialog() {
     showDialog(
       context: context,
@@ -139,19 +401,21 @@ class _TaskPageState extends State<TaskPage> {
     );
   }
 
-  /// Main build method
+  /// Main build method with animated background.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          Positioned.fill(child: FadingBackground()), // Your existing background
+          // Fading background image.
+          FadingBackground(),
           SafeArea(
             child: Column(
               children: [
-                _buildPremiumAppBar(context),
+                const PremiumAppBar(),
                 Expanded(
-                  child: _buildCandyMap(context),
+                  child: CandyMap(
+                      tasks: tasks, onLevelSelected: _onLevelSelected),
                 ),
               ],
             ),
@@ -160,14 +424,18 @@ class _TaskPageState extends State<TaskPage> {
       ),
     );
   }
+}
+/// Animated Premium App Bar with an animated title.
+class PremiumAppBar extends StatelessWidget {
+  const PremiumAppBar({Key? key}) : super(key: key);
 
-  /// A custom "premium" app bar with a gold-orange gradient.
-  Widget _buildPremiumAppBar(BuildContext context) {
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.green.shade400, Colors.lightGreen.shade700],
+          colors: [Colors.green.shade500, Colors.lightGreen.shade900],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -176,7 +444,7 @@ class _TaskPageState extends State<TaskPage> {
             color: Colors.black26,
             blurRadius: 4,
             offset: Offset(0, 2),
-          )
+          ),
         ],
       ),
       child: Row(
@@ -187,36 +455,48 @@ class _TaskPageState extends State<TaskPage> {
           ),
           Expanded(
             child: Center(
-              child: Text(
-                'Green Journey',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 1.2,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black26,
-                      blurRadius: 2,
-                      offset: Offset(1, 1),
-                    )
-                  ],
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.8, end: 1.0),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOutBack,
+                builder: (context, scale, child) {
+                  return Transform.scale(scale: scale, child: child);
+                },
+                child: const Text(
+                  'Green Journey',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 1.2,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black26,
+                        blurRadius: 2,
+                        offset: Offset(1, 1),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 48), // Extra space
+          const SizedBox(width: 48),
         ],
       ),
     );
   }
+}
+/// Scrollable map with animated level circles.
+class CandyMap extends StatelessWidget {
+  final List<Task> tasks;
+  final Function(int) onLevelSelected;
+  const CandyMap({Key? key, required this.tasks, required this.onLevelSelected})
+      : super(key: key);
 
-  /// Builds a single scrollable "map" with a zigzag path of levels.
-  Widget _buildCandyMap(BuildContext context) {
-    // Calculate each level's position in a zigzag pattern.
-    List<Offset> levelPositions = _calculateLevelPositions(tasks.length);
-
-    // The total height of the stack should fit all levels plus spacing.
+  @override
+  Widget build(BuildContext context) {
+    List<Offset> levelPositions = _calculateLevelPositions(context, tasks.length);
     final totalHeight = (tasks.length * 250).toDouble();
 
     return SingleChildScrollView(
@@ -225,18 +505,18 @@ class _TaskPageState extends State<TaskPage> {
         height: totalHeight,
         child: Stack(
           children: [
-            // Draw the connecting path behind the circles
+            // Custom path behind circles
             CustomPaint(
               size: Size(MediaQuery.of(context).size.width, totalHeight),
-              painter: _PremiumPathPainter(levelPositions),
+              painter: PremiumPathPainter(levelPositions),
             ),
-            // Place each level circle at its position
+            // Animated level circles
             for (int i = 0; i < tasks.length; i++)
               Positioned(
                 left: levelPositions[i].dx,
                 top: levelPositions[i].dy,
                 child: GestureDetector(
-                  onTap: () => _onLevelSelected(tasks[i].level),
+                  onTap: () => onLevelSelected(tasks[i].level),
                   child: LevelCircle(task: tasks[i]),
                 ),
               ),
@@ -246,9 +526,7 @@ class _TaskPageState extends State<TaskPage> {
     );
   }
 
-  /// Generates a list of Offsets for each level in a left-right zigzag.
-  List<Offset> _calculateLevelPositions(int count) {
-    // Adjust these to control layout
+  List<Offset> _calculateLevelPositions(BuildContext context, int count) {
     double leftX = 40;
     double rightX = MediaQuery.of(context).size.width - 120;
     double startY = 50;
@@ -264,28 +542,23 @@ class _TaskPageState extends State<TaskPage> {
     return positions;
   }
 }
-
-class _PremiumPathPainter extends CustomPainter {
+/// Custom path painter with a smooth spline.
+class PremiumPathPainter extends CustomPainter {
   final List<Offset> positions;
-  _PremiumPathPainter(this.positions);
+  PremiumPathPainter(this.positions);
 
-  /// Converts a list of points into a smooth Catmull–Rom spline path.
   Path _createSmoothPath(List<Offset> points) {
     Path path = Path();
     if (points.isEmpty) return path;
-    // Start at the first point.
     path.moveTo(points[0].dx, points[0].dy);
-
     for (int i = 0; i < points.length - 1; i++) {
       Offset p0 = i == 0 ? points[0] : points[i - 1];
       Offset p1 = points[i];
       Offset p2 = points[i + 1];
-      Offset p3 = (i + 2 < points.length) ? points[i + 2] : points[i + 1];
+      Offset p3 = (i + 2 < points.length) ? points[i + 2] : p2;
 
-      // Calculate control points for smooth cubic Bézier using Catmull–Rom algorithm.
       Offset cp1 = p1 + (p2 - p0) / 6;
       Offset cp2 = p2 - (p3 - p1) / 6;
-
       path.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, p2.dx, p2.dy);
     }
     return path;
@@ -293,14 +566,10 @@ class _PremiumPathPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (positions.isEmpty) return;
-
-    // Offset each level position to align with the center of your LevelCircle (approx. +40, +40).
     List<Offset> offsetPositions =
     positions.map((p) => p + const Offset(40, 40)).toList();
     Path path = _createSmoothPath(offsetPositions);
 
-    // Layer 1: Outer Glow.
     final Paint glowPaint = Paint()
       ..color = Colors.orangeAccent.withOpacity(0.6)
       ..style = PaintingStyle.stroke
@@ -308,7 +577,6 @@ class _PremiumPathPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
 
-    // Layer 2: Gradient Stroke.
     final Paint gradientPaint = Paint()
       ..strokeWidth = 8
       ..style = PaintingStyle.stroke
@@ -319,116 +587,147 @@ class _PremiumPathPainter extends CustomPainter {
         end: Alignment.bottomCenter,
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    // Layer 3: Inner White Highlight.
     final Paint highlightPaint = Paint()
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke
       ..color = Colors.white.withOpacity(0.8)
       ..strokeCap = StrokeCap.round;
 
-    // Draw the layers in order.
     canvas.drawPath(path, glowPaint);
     canvas.drawPath(path, gradientPaint);
     canvas.drawPath(path, highlightPaint);
   }
 
   @override
-  bool shouldRepaint(_PremiumPathPainter oldDelegate) => true;
+  bool shouldRepaint(covariant PremiumPathPainter oldDelegate) => true;
 }
-
-
-
-// The LevelCircle widget displays the level number in a circular design.
-class LevelCircle extends StatelessWidget {
+/// LevelCircle widget with animated effects.
+class LevelCircle extends StatefulWidget {
   final Task task;
-
   const LevelCircle({Key? key, required this.task}) : super(key: key);
 
   @override
+  State<LevelCircle> createState() => _LevelCircleState();
+}
+class _LevelCircleState extends State<LevelCircle>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..forward();
+
+    _scaleAnimation =
+        Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(
+          parent: _animController,
+          curve: Curves.easeOutBack,
+        ));
+
+    _fadeAnimation =
+        Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+          parent: _animController,
+          curve: Curves.easeIn,
+        ));
+  }
+
+  @override
+  void didUpdateWidget(covariant LevelCircle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.task != widget.task) {
+      _animController.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.8, end: 1.0),
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeOutBack,
-      builder: (context, scale, child) {
-        return Transform.scale(scale: scale, child: child);
-      },
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // For completed tasks, display a star with the level number overlay.
-          task.isCompleted
-              ? Stack(
-            alignment: Alignment.center,
-            children: [
-              Icon(
-                Icons.star,
-                size: 100,
-                color: Colors.amber,
-                shadows: const [
-                  Shadow(
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            widget.task.isCompleted
+                ? Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.star,
+                  size: 100,
+                  color: Colors.amber,
+                  shadows: const [
+                    Shadow(
+                      color: Colors.black38,
+                      blurRadius: 8,
+                      offset: Offset(2, 2),
+                    ),
+                  ],
+                ),
+                Text(
+                  '${widget.task.level}',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            )
+                : Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: widget.task.isUnlocked
+                      ? [Colors.lightGreen.shade400, Colors.green.shade800]
+                      : [Colors.grey.shade300, Colors.grey.shade600],
+                  stops: const [0.3, 1.0],
+                ),
+                boxShadow: const [
+                  BoxShadow(
                     color: Colors.black38,
                     blurRadius: 8,
                     offset: Offset(2, 2),
                   ),
                 ],
               ),
-              Text(
-                '${task.level}',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          )
-              : Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: task.isUnlocked
-                    ? [Colors.lightGreen.shade400, Colors.green.shade800]
-                    : [Colors.grey.shade300, Colors.grey.shade600],
-                stops: const [0.3, 1.0],
-                center: Alignment.center,
-                radius: 0.9,
-              ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black38,
-                  blurRadius: 8,
-                  offset: Offset(2, 2),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                '${task.level}',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              child: Center(
+                child: Text(
+                  '${widget.task.level}',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
-          ),
-          if (!task.isUnlocked) EcoPulsatingLock(),
-        ],
+            if (!widget.task.isUnlocked)
+              EcoPulsatingLock(), // Assume this is a custom animated lock widget.
+          ],
+        ),
       ),
     );
   }
 }
 
-
-// The FadingBackground widget uses an animation to fade in the background image.
 class FadingBackground extends StatefulWidget {
   @override
   _FadingBackgroundState createState() => _FadingBackgroundState();
 }
-
 class _FadingBackgroundState extends State<FadingBackground>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;

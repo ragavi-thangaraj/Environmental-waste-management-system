@@ -118,6 +118,7 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
             'image': doc['image'],
             'phone': doc['phone'],
             'link': doc['link'],
+            'type': doc['type'], // ✅ Added type variable
           });
           _results.sort((a, b) => a['distance'].compareTo(b['distance']));
         });
@@ -127,6 +128,7 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
       print("Error processing document: $e");
     }
   }
+
 
   // Calculate Distance between User and Place
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
@@ -159,31 +161,113 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
     );
   }
 
+  String _filterType = 'All'; // Default filter type
+
   @override
   Widget build(BuildContext context) {
-    // Use a Stack to place a background image behind the results area
+    List filteredResults = _results.where((result) {
+      bool isDegradable = false;
+
+      // Handle both string and list cases for 'type'
+      if (result['type'] is String) {
+        isDegradable = result['type'].toLowerCase().contains('paper');
+      } else if (result['type'] is List) {
+        isDegradable = result['type'].any((item) => item.toLowerCase() == 'paper');
+      }
+
+      // Filter based on type and collection
+      if (_filterType == 'Degradable') {
+        return isDegradable;
+      } else if (_filterType == 'Non-Biodegradable') {
+        return !isDegradable;
+      } else {
+        return true; // Show all if no filter selected
+      }
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Text(
           "Recycling Centers & Junk Yards",
           style: TextStyle(
-            color: Colors.white,
+            fontSize: 26,
             fontWeight: FontWeight.bold,
-            fontSize: 24,
+            color: Colors.white,
+            letterSpacing: 1.2,
           ),
         ),
-        backgroundColor: Colors.green.shade800,
-        elevation: 0,
-        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 4,
+        shadowColor: Colors.green.shade300,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(30),
+          ),
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(30),
+            ),
+            gradient: LinearGradient(
+              colors: [Colors.green.shade800, Colors.green.shade300],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.info_outline, size: 28, color: Colors.white),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: Text(
+                      "Discover Hidden Gems!",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800,
+                      ),
+                    ),
+                    content: Text(
+                      "Step into a world of eco-friendly wonders! Uncover recycling centers and junk yards that transform waste into treasure. Ready to explore?",
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    actions: [
+                      TextButton(
+                        child: Text(
+                          "Let's Explore!",
+                          style: TextStyle(
+                            color: Colors.green.shade600,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          // Optionally add navigation to another page here.
+                        },
+                      ),
+                    ],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    elevation: 5,
+                  );
+                },
+              );
+            },
+          ),
+          SizedBox(width: 8),
+        ],
       ),
       body: Stack(
         children: [
-          // Background image covering only the results area
-          Positioned(
-            top: 200, // Start background image after the top (location) section
-            left: 0,
-            right: 0,
-            bottom: 0,
+          // Background image behind the results area
+          Positioned.fill(
+            top: 200,
             child: Container(
               decoration: BoxDecoration(
                 image: DecorationImage(
@@ -191,7 +275,6 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
                   fit: BoxFit.cover,
                 ),
               ),
-              // A gradient to fade from white to transparent:
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -203,12 +286,13 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
               ),
             ),
           ),
+
           Padding(
             padding: EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Location Section
+                // 🌍 Location Section
                 Row(
                   children: [
                     Icon(Icons.location_on, color: Colors.green.shade700, size: 30),
@@ -224,6 +308,7 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
                   ],
                 ),
                 SizedBox(height: 12),
+
                 _isLoadingLocation
                     ? Center(
                   child: CircularProgressIndicator(
@@ -247,31 +332,121 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
                     ),
                   ),
                 ),
+
                 SizedBox(height: 20),
 
-                // Results Section
-                // Updated Results Section inside your build() method
+                // 🔽 Dropdown Filter
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.6), // Glassmorphic background
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: Colors.green.shade400,
+                      width: 1.2,
+                    ),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _filterType,
+                      icon: Icon(Icons.arrow_drop_down, color: Colors.green.shade600, size: 28),
+                      isExpanded: true,
+                      dropdownColor: Colors.white, // Background color for dropdown
+                      borderRadius: BorderRadius.circular(12), // Rounded dropdown edges
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800,
+                      ),
+                      items: ['All', 'Degradable', 'Non-Biodegradable']
+                          .map((String value) => DropdownMenuItem(
+                        value: value,
+                        child: Row(
+                          children: [
+                            Icon(
+                              value == 'All'
+                                  ? Icons.layers
+                                  : value == 'Degradable'
+                                  ? Icons.eco
+                                  : Icons.delete,
+                              color: value == 'Degradable'
+                                  ? Colors.green.shade600
+                                  : value == 'Non-Biodegradable'
+                                  ? Colors.red.shade400
+                                  : Colors.blue.shade400,
+                              size: 20,
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              value,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.green.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ))
+                          .toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _filterType = newValue!;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 20),
+
+                // 🌟 Results Section
                 Expanded(
-                  child: ListView.separated(
-                    itemCount: _results.length,
+                  child: filteredResults.isEmpty
+                      ? Center(
+                    child: Text(
+                      "No centers found for '$_filterType'.",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  )
+                      : ListView.separated(
+                    itemCount: filteredResults.length,
                     separatorBuilder: (context, index) => SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      final result = _results[index];
+                      final result = filteredResults[index];
                       double distance = result['distance'];
                       String distanceStr = "${distance.toStringAsFixed(1)} km away";
+
                       return InkWell(
                         onTap: () => _onCardTap(result),
                         child: Card(
-                          elevation: 4,
+                          elevation: 5,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
                           shadowColor: Colors.green.shade100,
                           child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(15),
+                              image: DecorationImage(
+                                image: AssetImage('lib/assets/ease.jpg'),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                             padding: EdgeInsets.all(12),
                             child: Row(
                               children: [
-                                // Left: Image with rounded corners
+                                // 🖼️ Image Section
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
                                   child: Container(
@@ -284,7 +459,8 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
                                   ),
                                 ),
                                 SizedBox(width: 16),
-                                // Right: Text information
+
+                                // 📝 Info Section
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,6 +472,8 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
                                           fontSize: 18,
                                           color: Colors.green.shade800,
                                         ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                       SizedBox(height: 4),
                                       Text(
@@ -304,6 +482,7 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
                                           fontSize: 14,
                                           color: Colors.grey[700],
                                         ),
+                                        maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       SizedBox(height: 8),
@@ -324,7 +503,8 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
                                     ],
                                   ),
                                 ),
-                                // Optional: an arrow icon to indicate tappable details
+
+                                // ➡️ Arrow Icon
                                 Icon(Icons.arrow_forward_ios,
                                     size: 16, color: Colors.green.shade600),
                               ],
@@ -342,6 +522,8 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
       ),
     );
   }
+
+
 }
 
 

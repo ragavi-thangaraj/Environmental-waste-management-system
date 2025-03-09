@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ class DisposalPage extends StatefulWidget {
 }
 
 class _DisposalPageState extends State<DisposalPage> {
+  final FlutterTts flutterTts = FlutterTts();
   late ConfettiController _confettiController;
   final ScrollController _scrollController = ScrollController();
   final PageController _pageController = PageController(viewportFraction: 0.9);
@@ -51,6 +53,7 @@ class _DisposalPageState extends State<DisposalPage> {
   void dispose() {
     _confettiController.dispose();
     _pageController.dispose();
+    flutterTts.stop();
     super.dispose();
   }
   void showMore() {
@@ -69,30 +72,112 @@ class _DisposalPageState extends State<DisposalPage> {
     Map<String, List<String>> keywordVideos = {
       'aluminum': [
         'https://www.youtube.com/shorts/4ZVpC1nfmzE',
-        'https://www.youtube.com/watch?v=_ItLfaO_WY0&pp=ygUcY3JhZnQgd29ya3Mgb24gYWx1bWluaXVtIGNhbg%3D%3D',
-        'https://www.youtube.com/watch?v=5XAFMEBiouQ&pp=ygUcY3JhZnQgd29ya3Mgb24gYWx1bWluaXVtIGNhbg%3D%3D',
+        'https://www.youtube.com/watch?v=_ItLfaO_WY0',
+        'https://www.youtube.com/watch?v=5XAFMEBiouQ',
       ],
       'paper': [
         'https://www.youtube.com/shorts/rOQpYiU8y1M',
         'https://www.youtube.com/shorts/rWF0YPzxwb8',
         'https://www.youtube.com/shorts/7uYcSRMb5xE',
-        'https://www.youtube.com/watch?v=aaz4Qe6zYyU&pp=ygUZY3JhZnQgd29yayBvbiB3YXN0ZSBwYXBlcg%3D%3D',
+        'https://www.youtube.com/watch?v=aaz4Qe6zYyU',
       ],
-      // Add more keyword mappings here if needed
+      'plastic': [
+        'https://www.youtube.com/watch?v=oDLjsFGFj7g',
+        'https://www.youtube.com/watch?v=MH22eO9QqeQ',
+        'https://www.youtube.com/shorts/SkLw6nwNdkU',
+      ],
+      'electronics': [
+        'https://www.youtube.com/shorts/6ETBBHBbnlQ',
+        'https://www.youtube.com/shorts/wAt2ouYB7-E',
+        'https://www.youtube.com/watch?v=v8JJCbfIlws',
+        'https://www.youtube.com/watch?v=SCj0gsb1rMs',
+      ],
+      'medicine': [
+        'https://www.youtube.com/shorts/f6T5mkb5aqY',
+        'https://www.youtube.com/shorts/-F-JoKuByps',
+        'https://www.youtube.com/watch?v=wglXULEH7nU',
+        'https://www.youtube.com/shorts/t5DeVj4Gu-Q',
+      ],
+      'pens': [
+        'https://www.youtube.com/shorts/7CTJNsBVjSI',
+        'https://www.youtube.com/watch?v=FCOkPfUYjo8',
+        'https://www.youtube.com/watch?v=OxUAJ0w-Lx8',
+      ],
+      'phone': [
+        'https://www.youtube.com/watch?v=5gUc9EE_O1Q',
+      ],
+      'wood': [
+        'https://www.youtube.com/watch?v=JBg1MJVHjss',
+        'https://www.youtube.com/watch?v=ARnTE_mL2N0',
+        'https://www.youtube.com/shorts/lt5g749k2pY',
+      ],
+      'cloth': [
+        'https://www.youtube.com/watch?v=yLZgrSpCAVs',
+        'https://www.youtube.com/watch?v=S67EG8ntlcM',
+      ],
+      'battery': [
+        'https://www.youtube.com/watch?v=2VtQXudqz74',
+        'https://www.youtube.com/watch?v=wgSNYCxKLhI',
+        'https://www.youtube.com/watch?v=67NgHePUk1g',
+      ],
+      'glass': [
+        'https://www.youtube.com/watch?v=mwVwFxA47ZU',
+        'https://www.youtube.com/watch?v=HZDeAFpi-lo',
+        'https://www.youtube.com/watch?v=n4vlGT9-Zng',
+      ],
+      'bottle': [
+        'https://www.youtube.com/shorts/-JWhg_ZR6tU',
+        'https://www.youtube.com/shorts/uYYZTMjE9pA',
+        'https://www.youtube.com/shorts/tDGPp1aDAI4',
+        'https://www.youtube.com/watch?v=E19QrSIWfQU',
+      ],
+      'headphones': [
+        'https://www.youtube.com/watch?v=pKLpRWodplg',
+      ],
+      'keyboard': [
+        'https://www.youtube.com/shorts/ts2AvEjsFJE',
+      ],
+      'tires': [
+        'https://www.youtube.com/shorts/u_agQ_5uU_I',
+        'https://www.youtube.com/watch?v=ACfnS2nubHU',
+      ],
+      'erasers': [
+        'https://www.youtube.com/shorts/7SmO5LXMWu8',
+        'https://www.youtube.com/shorts/NnVlmhk-EWI',
+        'https://www.youtube.com/shorts/wasTBqEoABI',
+      ],
+      'table': [
+        'https://www.youtube.com/shorts/cpZOsXwY_h8',
+      ],
+      'chair': [
+        'https://www.youtube.com/shorts/QXjIiyjnBQQ',
+        'https://www.youtube.com/shorts/Dg4tSRPme-Q',
+        'https://www.youtube.com/shorts/ECPtM3gpHho',
+      ],
+      'default': [
+        'https://www.youtube.com/watch?v=PZ6SgdHQw_g',
+        'https://www.youtube.com/watch?v=8facy0nK8Lw',
+      ],
     };
 
-    // List to hold the results.
+    // List to store matched video links.
     List<String> resultLinks = [];
 
-    // Check if the text contains any of the keywords and add the corresponding videos.
+    // Check if the text contains any keywords and collect the related videos.
     keywordVideos.forEach((keyword, links) {
       if (text.toLowerCase().contains(keyword.toLowerCase())) {
         resultLinks.addAll(links);
       }
     });
 
+    // If no keyword matches, return default videos.
+    if (resultLinks.isEmpty) {
+      return keywordVideos['default']!;
+    }
+
     return resultLinks;
   }
+
 
   Future<Map<String, dynamic>?> _findNearestMunicipalOfficer(Position userPosition) async {
     FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -395,17 +480,56 @@ class _DisposalPageState extends State<DisposalPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.green[900],
-        title: Row(
-          children: [
-            SizedBox(width: 18),
-            Icon(FontAwesomeIcons.recycle, color: Colors.white),
-            SizedBox(width: 10),
-            Text("Disposal Measures", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ],
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green.shade900, Colors.green.shade500],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(40),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black38,
+                offset: Offset(0, 4),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(FontAwesomeIcons.recycle, color: Colors.white, size: 30),
+                  SizedBox(width: 12),
+                  Text(
+                    "Disposal Measures",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          offset: Offset(2, 2),
+                          blurRadius: 4,
+                          color: Colors.black45,
+                        )
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
+        centerTitle: true,
       ),
-      body: Stack(
+        body: Stack(
         children: [
           Positioned.fill(
             child: Container(
@@ -445,6 +569,16 @@ class _DisposalPageState extends State<DisposalPage> {
                       SizedBox(width: 10),
                       Text("Why is this Important?",
                           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green[800])),
+                      IconButton(
+                        icon: Icon(Icons.volume_up, color: Colors.green[800], size: 28),
+                        onPressed: () async {
+                          // Optionally configure language and pitch:
+                          await flutterTts.setLanguage("en-US");
+                          await flutterTts.setPitch(1.0);
+                          // Speak out the description text
+                          await flutterTts.speak(description);
+                        },
+                      ),
                     ],
                   ),
                   SizedBox(height: 10),
@@ -497,43 +631,57 @@ class _DisposalPageState extends State<DisposalPage> {
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           child: Row(
                             children: [
-                              Icon(FontAwesomeIcons.youtube, color: Colors.red, size: 28),
-                              const SizedBox(width: 10),
+                              Icon(FontAwesomeIcons.youtube, color: Colors.redAccent, size: 30),
+                              const SizedBox(width: 12),
                               Text(
-                                "Watch and Learn",
+                                "Watch & Learn",
                                 style: TextStyle(
-                                  fontSize: 22,
+                                  fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.red[700],
+                                  color: Colors.redAccent,
+                                  shadows: const [
+                                    Shadow(
+                                      blurRadius: 4,
+                                      color: Colors.black26,
+                                      offset: Offset(2, 2),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        // Updated video container with glassmorphic effect
+                        const SizedBox(height: 12),
+                        // Glassmorphic video container with enhanced styling
                         Container(
-                          height: 280,
+                          height: 300,
                           margin: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(28),
                             gradient: LinearGradient(
                               colors: [
-                                Colors.white.withOpacity(0.15),
+                                Colors.white.withOpacity(0.2),
                                 Colors.white.withOpacity(0.05),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withOpacity(0.3),
                               width: 1.5,
                             ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 8,
+                                offset: Offset(2, 2),
+                              )
+                            ],
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(28),
                             child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                               child: Stack(
                                 children: [
                                   // Video carousel using PageView.builder
@@ -545,7 +693,7 @@ class _DisposalPageState extends State<DisposalPage> {
                                       return Padding(
                                         padding: const EdgeInsets.all(12.0),
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(20),
+                                          borderRadius: BorderRadius.circular(24),
                                           child: YoutubePlayer(
                                             controller: YoutubePlayerController(
                                               initialVideoId: videoId,
@@ -555,7 +703,7 @@ class _DisposalPageState extends State<DisposalPage> {
                                               ),
                                             ),
                                             showVideoProgressIndicator: true,
-                                            progressIndicatorColor: Colors.red,
+                                            progressIndicatorColor: Colors.redAccent,
                                           ),
                                         ),
                                       );
@@ -566,9 +714,9 @@ class _DisposalPageState extends State<DisposalPage> {
                                       });
                                     },
                                   ),
-                                  // Animated page indicator at the bottom
+                                  // Animated page indicator at the bottom center
                                   Positioned(
-                                    bottom: 16,
+                                    bottom: 20,
                                     left: 0,
                                     right: 0,
                                     child: Row(
@@ -576,11 +724,11 @@ class _DisposalPageState extends State<DisposalPage> {
                                       children: List.generate(youtubeLinks.length, (index) {
                                         return AnimatedContainer(
                                           duration: const Duration(milliseconds: 300),
-                                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                                          width: _currentPage == index ? 12 : 8,
-                                          height: _currentPage == index ? 12 : 8,
+                                          margin: const EdgeInsets.symmetric(horizontal: 5),
+                                          width: _currentPage == index ? 14 : 10,
+                                          height: _currentPage == index ? 14 : 10,
                                           decoration: BoxDecoration(
-                                            color: _currentPage == index ? Colors.redAccent : Colors.white54,
+                                            color: _currentPage == index ? Colors.redAccent : Colors.white70,
                                             shape: BoxShape.circle,
                                           ),
                                         );
@@ -593,7 +741,7 @@ class _DisposalPageState extends State<DisposalPage> {
                                     left: 0,
                                     right: 0,
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: [
@@ -604,15 +752,15 @@ class _DisposalPageState extends State<DisposalPage> {
                                           end: Alignment.bottomCenter,
                                         ),
                                         borderRadius: const BorderRadius.only(
-                                          topLeft: Radius.circular(24),
-                                          topRight: Radius.circular(24),
+                                          topLeft: Radius.circular(28),
+                                          topRight: Radius.circular(28),
                                         ),
                                       ),
                                       child: const Text(
                                         "Featured Videos",
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 20,
+                                          fontSize: 22,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -623,61 +771,70 @@ class _DisposalPageState extends State<DisposalPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        // Animated page indicators
+                        const SizedBox(height: 20),
+                        // Buttons row with improved padding and elevation
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  toggleTasks(); // This should show the tasks section
+                                  Future.delayed(const Duration(milliseconds: 300), () {
+                                    _scrollController.animateTo(
+                                      _scrollController.position.maxScrollExtent,
+                                      duration: const Duration(milliseconds: 600),
+                                      curve: Curves.easeInOut,
+                                    );
+                                  });
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green[800],
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  elevation: 8,
+                                ),
+                                icon: const Icon(Icons.cleaning_services, size: 28),
+                                label: const Text("Clean", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  Position userPosition = await _getUserLocation();
+                                  Map<String, dynamic>? nearestOfficer = await _findNearestMunicipalOfficer(userPosition);
+
+                                  if (nearestOfficer != null) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => HelpPage(
+                                          nearestOfficer: nearestOfficer,
+                                          image: widget.image,
+                                          text: description,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange[800],
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  elevation: 8,
+                                ),
+                                icon: const Icon(Icons.help_outline, size: 28),
+                                label: const Text("Help", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
                       ],
                     ),
                   ],
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          toggleTasks(); // This should show the tasks section
-                          Future.delayed(Duration(milliseconds: 300), () {
-                            _scrollController.animateTo(
-                              _scrollController.position.maxScrollExtent,
-                              duration: Duration(milliseconds: 600),
-                              curve: Curves.easeInOut,
-                            );
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[800],
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 5,
-                        ),
-                        icon: Icon(Icons.cleaning_services, size: 24),
-                        label: Text("Clean", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          Position userPosition = await _getUserLocation();
-                          Map<String, dynamic>? nearestOfficer = await _findNearestMunicipalOfficer(userPosition);
 
-                          if (nearestOfficer != null) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => HelpPage(nearestOfficer: nearestOfficer,image:widget.image,text:description),
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange[800],
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 5,
-                        ),
-                        icon: Icon(Icons.help_outline, size: 24),
-                        label: Text("Help", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
 
                   SizedBox(height: 20),
 
