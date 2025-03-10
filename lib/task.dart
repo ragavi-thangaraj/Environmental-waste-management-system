@@ -5,6 +5,7 @@ import 'package:ease/task3.dart';
 import 'package:ease/task4.dart';
 import 'package:ease/task5.dart';
 import 'package:ease/task6.dart';
+import 'package:ease/task7.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -162,7 +163,7 @@ class _TaskPageState extends State<TaskPage>
         }
       } else {
         route = PageRouteBuilder(
-          pageBuilder: (_, __, ___) => NeighborhoodLitterPatrolScreen(),
+          pageBuilder: (_, __, ___) => TrashCollectGame(),
           transitionsBuilder: (_, animation, __, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 500),
@@ -216,7 +217,7 @@ class _TaskPageState extends State<TaskPage>
         }
       } else {
         route = PageRouteBuilder(
-          pageBuilder: (_, __, ___) => UpcyclingChallengeScreen(),
+          pageBuilder: (_, __, ___) => TrashCollectGame(),
           transitionsBuilder: (_, animation, __, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 500),
@@ -328,7 +329,7 @@ class _TaskPageState extends State<TaskPage>
       // Navigate to the Recycling Sorting Game screen.
       else {
       route = PageRouteBuilder(
-        pageBuilder: (_, __, ___) => RecyclingSortingGameScreen(),
+        pageBuilder: (_, __, ___) => TrashCollectGame(),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 500),
@@ -386,12 +387,68 @@ class _TaskPageState extends State<TaskPage>
 
       // ✅ Open EcoFriendlyArtScreen directly without extra function call
       route = PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const EcoFriendlyArtScreen(),
+        pageBuilder: (_, __, ___) => TrashCollectGame(),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 500),
       );
     }
+    else if (level == 7)
+    {
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("User not logged in.")),
+          );
+          return;
+        }
+
+        // Check if a submission for level 3 already exists.
+        final submissionSnapshot = await FirebaseFirestore.instance
+            .collection("verify")
+            .where("userId", isEqualTo: currentUser.uid)
+            .where("level", isEqualTo: 7)
+            .get();
+
+        if (submissionSnapshot.docs.isNotEmpty) {
+          final doc = submissionSnapshot.docs.first;
+          final status = doc.data()["status"];
+          if (status == "Not Confirmed") {
+            showDialog(
+              context: context,
+              builder: (context) => Dialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                child: _buildReviewDialogContent(context),
+              ),
+            );
+            return;
+          } else if (status == "Confirmed") {
+            showDialog(
+              context: context,
+              builder: (context) => Dialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                child: _buildCustomConfirmationDialog(context),
+              ),
+            );
+            return;
+          }
+        } else {
+          route = PageRouteBuilder(
+            pageBuilder: (_, __, ___) => BeachCleanupGame(),
+            transitionsBuilder: (_, animation, __, child) =>
+                FadeTransition(opacity: animation, child: child),
+            transitionDuration: const Duration(milliseconds: 500),
+          );
+        }
+      }
     else if (level == 1) {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
@@ -405,7 +462,7 @@ class _TaskPageState extends State<TaskPage>
       final submissionSnapshot = await FirebaseFirestore.instance
           .collection("verify")
           .where("userId", isEqualTo: currentUser.uid)
-          .where("level", isEqualTo: 6)
+          .where("level", isEqualTo: 1)
           .get();
 
       if (submissionSnapshot.docs.isNotEmpty) {
@@ -443,7 +500,7 @@ class _TaskPageState extends State<TaskPage>
 
       // ✅ Open EcoFriendlyArtScreen directly without extra function call
       route = PageRouteBuilder(
-        pageBuilder: (_, __, ___) => TrashCollectGame(),
+        pageBuilder: (_, __, ___) => RecyclingSortingGameScreen(),
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 500),
