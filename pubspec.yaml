@@ -47,6 +47,7 @@ dependencies:
   geocoding: ^2.1.0
   youtube_player_flutter: ^9.1.1
   flutter_inappwebview: ^6.1.5
+  image_compare_2: ^1.1.7
 dependency_overrides:
   intl: ^0.18.1
 
@@ -81,4 +82,8 @@ flutter:
     - lib/assets/art1.jpg
     - lib/assets/art2.jpg
     - lib/assets/art3.jpg
+    - lib/assets/earth.jpg
+    - lib/assets/standboy.png
+    - lib/assets/runboy.png
+    - lib/assets/runningboy.png
 

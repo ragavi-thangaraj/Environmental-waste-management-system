@@ -522,8 +522,6 @@ class _RecyclingSearchPageState extends State<RecyclingSearchPage> {
       ),
     );
   }
-
-
 }
 
 

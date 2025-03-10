@@ -1,4 +1,5 @@
 import 'package:ease/home_page.dart';
+import 'package:ease/login.dart';
 import 'package:ease/main.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -27,23 +28,52 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _logout(BuildContext context) async {
-    // Sign out from FirebaseAuth.
-    await FirebaseAuth.instance.signOut();
+    try {
+      // Show a loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
 
-    // Sign out from GoogleSignIn.
-    final GoogleSignIn googleSignIn = GoogleSignIn();
-    await googleSignIn.signOut();
-    await googleSignIn.disconnect();
+      // Sign out from FirebaseAuth
+      await FirebaseAuth.instance.signOut();
 
-    // Clear app data from SharedPreferences.
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+      // Handle Google Sign-In logout
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      if (await googleSignIn.isSignedIn()) {
+        await googleSignIn.signOut();
+        try {
+          await googleSignIn.disconnect();
+        } catch (e) {
+          // Ignore disconnect errors as the session might already be invalid
+          debugPrint('Google disconnect error: $e');
+        }
+      }
 
-    // Navigate to the starting screen.
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => MyApp()),
-    );
+      // Clear app data from SharedPreferences
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      // Remove the loading indicator
+      Navigator.of(context).pop();
+
+      // Navigate to the starting screen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => LoginApp()),
+      );
+    } catch (e) {
+      // Remove loading indicator if error occurs
+      Navigator.of(context).pop();
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logout failed: $e')),
+      );
+    }
   }
+
+
   // Navigate to the Edit Profile page
   void _editProfile(Map<String, dynamic> userData) {
     Navigator.push(

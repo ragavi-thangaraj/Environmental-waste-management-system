@@ -105,7 +105,9 @@ class _EcoFriendlyArtScreenState extends State<EcoFriendlyArtScreen>
       'creative reuse',
       'recyclable materials',
       'environmental art',
-      'eco decor'
+      'eco decor',
+      'green',
+      'art'
     ];
 
     for (var tagInfo in tags) {

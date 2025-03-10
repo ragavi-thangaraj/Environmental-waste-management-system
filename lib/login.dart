@@ -108,13 +108,14 @@ class _LoginAppState extends State<LoginApp> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // App Logo
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(100),
-                        child: Image.network(
-                          'https://img.myloview.cz/plakaty/mother-earth-day-and-world-environment-day-concept-with-hand-holding-earth-planet-700-198028430.jpg',
-                          height: 80,
-                          width: 80,
-                          fit: BoxFit.cover,
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.white,
+                        backgroundImage: AssetImage('lib/assets/earth.jpg'),
+                        onBackgroundImageError: (_, __) => const Icon(
+                          Icons.image,
+                          size: 50,
+                          color: Colors.grey,
                         ),
                       ),
                       SizedBox(height: 20),

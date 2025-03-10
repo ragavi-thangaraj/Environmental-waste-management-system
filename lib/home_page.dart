@@ -1,5 +1,6 @@
 import 'package:ease/profile.dart';
 import 'package:ease/task.dart';
+import 'package:ease/wellness2.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -198,6 +199,8 @@ class HomePage extends StatelessWidget {
               "card2Subtitle": "Stay healthy while saving the planet.",
               "card3Title": "Daily Green Challenge",
               "card3Subtitle": "A new challenge every day!",
+              "card4Title": "Wellness & Environment",
+              "card4Subtitle": "Stay healthy while saving the planet.",
             },
             "Tamil": {
               "savingEarth": "பூமியை பாதுகாக்க, ஒவ்வொரு படியிலும்",
@@ -208,6 +211,8 @@ class HomePage extends StatelessWidget {
               "card2Subtitle": "பூமியை பாதுகாக்கும் போது ஆரோக்கியமாக இருங்கள்.",
               "card3Title": "தினசரி பசுமை சவால்",
               "card3Subtitle": "ஒவ்வொரு நாளும் ஒரு புதிய சவால்!",
+              "card4Title": "நலம் & சூழல்",
+              "card4Subtitle": "பூமியை பாதுகாக்கும் போது ஆரோக்கியமாக இருங்கள்.",
             },
             "Hindi": {
               "savingEarth": "एक कदम में पृथ्वी बचाएं",
@@ -218,6 +223,8 @@ class HomePage extends StatelessWidget {
               "card2Subtitle": "पृथ्वी बचाते हुए स्वस्थ रहें।",
               "card3Title": "दैनिक हरित चुनौती",
               "card3Subtitle": "हर दिन एक नई चुनौती!",
+              "card4Title": "स्वास्थ्य & पर्यावरण",
+              "card4Subtitle": "पृथ्वी बचाते हुए स्वस्थ रहें।",
             },
           };
 
@@ -253,9 +260,7 @@ class HomePage extends StatelessWidget {
                           CircleAvatar(
                             radius: 50,
                             backgroundColor: Colors.white,
-                            backgroundImage: NetworkImage(
-                              'https://img.myloview.com/plakaty/mother-earth-day-and-world-environment-day-concept-with-hand-holding-earth-planet-700-198028430.jpg',
-                            ),
+                            backgroundImage: AssetImage('lib/assets/earth.jpg'),
                             onBackgroundImageError: (_, __) => const Icon(
                               Icons.image,
                               size: 50,
@@ -341,6 +346,19 @@ class HomePage extends StatelessWidget {
                                   language
                                 ),
                               ),
+                              _buildCardWithBackground(
+                                context,
+                                _buildFeatureCard(
+                                    context,
+                                    Icons.track_changes,
+                                    "wellness2",
+                                    currentTrans["card4Title"]!,
+                                    currentTrans["card4Subtitle"]!,
+                                    Colors.green[100]!,
+                                    Colors.blue[800]!,
+                                    language
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 30),
@@ -422,6 +440,12 @@ class HomePage extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => TaskPage()),
+          );
+        }
+        else if (cardIdentifier == "wellness2") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => WellnessPage1()),
           );
         }
       },

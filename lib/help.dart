@@ -93,46 +93,36 @@ class HelpPage extends StatelessWidget {
     }
     return await geo.Geolocator.getCurrentPosition();
   }
-
   // Function to share a report via WhatsApp (using share_plus)
   Future<void> _sendReportViaWhatsApp(BuildContext context) async {
-    // Fetch the current user's name from Firestore
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("User not logged in.")),
+        const SnackBar(content: Text("User not logged in.")),
       );
       return;
     }
 
-    // Retrieve the user document from the "users" collection using the user's UID.
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .get();
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
+      final userName = userDoc.data()?['name'] ?? 'Honourable Citizen';
 
-    // Use the 'name' field from the document; fallback to 'Your Name' if not available.
-    final userName = userDoc.data()?['name'] ?? 'Honourable Citizen';
+      // Prepare the report text
+      final String reportLetter =
+          "Dear Officer,\n\n"
+          "I am writing to report an incident. Please find the details below:\n\n"
+          "Description:\n$text\n\n"
+          "Thank you,\n$userName";
 
-    // Construct the report letter including the user's name.
-    final String reportLetter =
-        "Dear Officer,\n\n"
-        "I am writing to report an incident. Please find the details below:\n\n"
-        "Description:\n$text\n\n"
-        "Thank you,\n$userName";
-
-    // Format the phone number correctly (example for India: "91" + number)
-    final String phone = "917010161033"; // Update accordingly
-
-    // Use WhatsApp's official URL format
-    final Uri whatsappUrl = Uri.parse(
-        "https://wa.me/$phone?text=${Uri.encodeComponent(reportLetter)}");
-
-    if (await canLaunchUrl(whatsappUrl)) {
-      await launchUrl(whatsappUrl);
-    } else {
+      await Share.shareXFiles(
+        [XFile(image.path)],
+        text: reportLetter,
+        subject: "Incident Report",
+      );
+    } catch (e) {
+      print("⚠️ Error sending report: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("WhatsApp is not installed on your device")),
+        const SnackBar(content: Text("Failed to send report. Please try again.")),
       );
     }
   }

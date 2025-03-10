@@ -114,20 +114,114 @@ class _TaskPageState extends State<TaskPage>
 
     PageRouteBuilder? route;
 
-    if (level == 1) {
-      route = PageRouteBuilder(
-        pageBuilder: (_, __, ___) => NeighborhoodLitterPatrolScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 500),
-      );
-    } else if (level == 2) {
-      route = PageRouteBuilder(
-        pageBuilder: (_, __, ___) => UpcyclingChallengeScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 500),
-      );
+    if (level == 6) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("User not logged in.")),
+        );
+        return;
+      }
+
+      // Check if a submission for level 3 already exists.
+      final submissionSnapshot = await FirebaseFirestore.instance
+          .collection("verify")
+          .where("userId", isEqualTo: currentUser.uid)
+          .where("level", isEqualTo: 1)
+          .get();
+
+      if (submissionSnapshot.docs.isNotEmpty) {
+        final doc = submissionSnapshot.docs.first;
+        final status = doc.data()["status"];
+        if (status == "Not Confirmed") {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: _buildReviewDialogContent(context),
+            ),
+          );
+          return;
+        } else if (status == "Confirmed") {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: _buildCustomConfirmationDialog(context),
+            ),
+          );
+          return;
+        }
+      } else {
+        route = PageRouteBuilder(
+          pageBuilder: (_, __, ___) => NeighborhoodLitterPatrolScreen(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+          transitionDuration: const Duration(milliseconds: 500),
+        );
+      }
+    } else if (level == 5) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("User not logged in.")),
+        );
+        return;
+      }
+
+      // Check if a submission for level 3 already exists.
+      final submissionSnapshot = await FirebaseFirestore.instance
+          .collection("verify")
+          .where("userId", isEqualTo: currentUser.uid)
+          .where("level", isEqualTo: 5)
+          .get();
+
+      if (submissionSnapshot.docs.isNotEmpty) {
+        final doc = submissionSnapshot.docs.first;
+        final status = doc.data()["status"];
+        if (status == "Not Confirmed") {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: _buildReviewDialogContent(context),
+            ),
+          );
+          return;
+        } else if (status == "Confirmed") {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: _buildCustomConfirmationDialog(context),
+            ),
+          );
+          return;
+        }
+      } else {
+        route = PageRouteBuilder(
+          pageBuilder: (_, __, ___) => UpcyclingChallengeScreen(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+          transitionDuration: const Duration(milliseconds: 500),
+        );
+      }
     } else if (level == 3) {
       // Get the current user.
       final currentUser = FirebaseAuth.instance.currentUser;
@@ -241,7 +335,7 @@ class _TaskPageState extends State<TaskPage>
       );
     }
     }
-    else if (level == 5) {
+    else if (level == 2) {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -254,7 +348,7 @@ class _TaskPageState extends State<TaskPage>
       final submissionSnapshot = await FirebaseFirestore.instance
           .collection("verify")
           .where("userId", isEqualTo: currentUser.uid)
-          .where("level", isEqualTo: 5)
+          .where("level", isEqualTo: 2)
           .get();
 
       if (submissionSnapshot.docs.isNotEmpty) {
@@ -298,7 +392,7 @@ class _TaskPageState extends State<TaskPage>
         transitionDuration: const Duration(milliseconds: 500),
       );
     }
-    else if (level == 6) {
+    else if (level == 1) {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1053,7 +1147,10 @@ class _NeighborhoodLitterPatrolScreenState extends State<NeighborhoodLitterPatro
   /// Capture photo using camera and also store location data.
   Future<void> _capturePhoto(bool isBefore) async {
     try {
-      final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+      final XFile? photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+      );
       if (photo != null) {
         Position currentPosition = await _getCurrentLocation();
 
@@ -1075,7 +1172,7 @@ class _NeighborhoodLitterPatrolScreenState extends State<NeighborhoodLitterPatro
   }
 
   /// Verify that both photos (and their locations) exist, convert them to Base64,
-  /// and store in Firestore.
+  /// and store the data in Firestore under the "verify" collection.
   Future<void> _verifyAndMarkComplete() async {
     if (beforePhoto == null ||
         afterPhoto == null ||
@@ -1100,6 +1197,7 @@ class _NeighborhoodLitterPatrolScreenState extends State<NeighborhoodLitterPatro
       Map<String, dynamic> verifyData = {
         'level': 1,
         'userId': FirebaseAuth.instance.currentUser!.uid,
+        // Optionally add additional user details:
         'beforePhoto': beforePhotoBase64,
         'afterPhoto': afterPhotoBase64,
         'beforePhotoLatitude': beforePhotoPosition!.latitude,
@@ -1305,8 +1403,7 @@ class _NeighborhoodLitterPatrolScreenState extends State<NeighborhoodLitterPatro
                 _buildPhotoSection("Before Photo", beforePhoto, true),
                 _buildPhotoSection("After Photo", afterPhoto, false),
                 SizedBox(height: 16),
-
-                // Replace the previous _verificationRecord check with this conditional:
+                // If the task has already been verified, show the verification status.
                 _verificationRecord != null
                     ? Center(
                   child: Card(
@@ -1365,23 +1462,24 @@ class _NeighborhoodLitterPatrolScreenState extends State<NeighborhoodLitterPatro
                     ),
                   ),
                 )
-                    : Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  color: Colors.white.withOpacity(0.9),
-                  child: CheckboxListTile(
-                    activeColor: Colors.green[700],
-                    title: Text("Mark task as completed", style: TextStyle(color: Colors.grey[800])),
-                    value: taskCompleted,
-                    onChanged: (value) {
-                      if (taskCompleted || isVerifying) return;
-                      if (value == true) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Your progress is under verification please hold tight")),
-                        );
-                        _verifyAndMarkComplete();
-                      }
-                    },
+                // Otherwise show a button to mark the task as completed.
+                    : ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[700],
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: isVerifying ? null : () {
+                    if (!taskCompleted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Your progress is under verification please hold tight")),
+                      );
+                      _verifyAndMarkComplete();
+                    }
+                  },
+                  child: Text(
+                    "Mark Task as Completed",
+                    style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
                 ),
                 SizedBox(height: 16),
