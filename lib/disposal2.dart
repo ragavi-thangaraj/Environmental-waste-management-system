@@ -864,6 +864,7 @@ class _DisposalPageState extends State<DisposalPage> {
                                           nearestOfficer: nearestOfficer,
                                           image: widget.image,
                                           text: description,
+                                          category: description,
                                         ),
                                       ),
                                     );

@@ -151,7 +151,7 @@ class _ImageResultPageState extends State<ImageResultPage> with SingleTickerProv
       "Identify the product based on these labels: ${_labels.join(", ")}. Discuss its health benefits and potential risks when used or consumed. Address common concerns people face regarding safety, allergies, or long-term effects. Avoid unnecessary introductory phrases and provide direct, clear information and explain in detail with needed measure to be taken";
     } else {
       formattedQuery =
-      "Recognizing the product from these labels: ${_labels.join(", ")}, explain the correct disposal methods. Provide clear, easy-to-follow steps that ensure environmental safety and also provide some craft work ideas as Task .Use simple language so even an 8-year-old can understand how to dispose of it properly without harming nature. Do not include phrases like 'Below is' or 'Here is'; deliver the information directly and explain in detail after explaining give me the task needed to be done to dispose them mention those task seperatedly as Task to be taken followed by the task only in bulletin";
+      "Recognizing the product from these labels: ${_labels.join(", ")}, explain the correct disposal methods. Provide clear, easy-to-follow steps that ensure environmental safety and also provide some craft work ideas as Task .Use simple language so even an 8-year-old can understand how to dispose of it properly without harming nature. Do not include phrases like 'Below is' or 'Here is'; deliver the information directly and after explaining give me the task needed to be done to dispose them mention those task seperatedly as Task to be taken followed by the task only in bulletin and say what type of category does the product belongs to";
     }
 
     setState(() {

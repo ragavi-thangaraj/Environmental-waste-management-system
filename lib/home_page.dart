@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'wellness_page.dart';
 import 'ShowTime.dart';
-
+import 'report.dart';
 class HomePage extends StatelessWidget {
   final User user;
   HomePage({required this.user});
@@ -98,7 +98,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar with a language icon on the left.
+      // AppBar remains unchanged.
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.translate, color: Colors.green[900]),
@@ -125,9 +125,7 @@ class HomePage extends StatelessWidget {
             }
             final userData =
                 snapshot.data!.data() as Map<String, dynamic>? ?? {};
-            // Get stored language; default to English.
             String language = userData['language'] ?? "English";
-            // Translations for AppBar title.
             Map<String, String> appBarTranslations = {
               "English": "Our Home",
               "Tamil": "எங்கள் வீடு",
@@ -163,8 +161,7 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-
-      // The rest of your HomePage body.
+      // Main body content.
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
             .collection('users')
@@ -182,13 +179,9 @@ class HomePage extends StatelessWidget {
               ),
             );
           }
-
           final userData =
               snapshot.data!.data() as Map<String, dynamic>? ?? {};
-          // Get the stored language; default to English.
           String language = userData['language'] ?? "English";
-
-          // Define translations for various text keys.
           Map<String, Map<String, String>> translations = {
             "English": {
               "savingEarth": "Saving Earth, One Step at a Time",
@@ -227,10 +220,7 @@ class HomePage extends StatelessWidget {
               "card4Subtitle": "पृथ्वी बचाते हुए स्वस्थ रहें।",
             },
           };
-
-          // Choose translations based on user's language.
           Map<String, String> currentTrans = translations[language]!;
-
           return Stack(
             children: [
               Positioned.fill(
@@ -253,14 +243,15 @@ class HomePage extends StatelessWidget {
                   children: [
                     Container(
                       color: Colors.white,
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 24),
                       child: Column(
                         children: [
                           CircleAvatar(
                             radius: 50,
                             backgroundColor: Colors.white,
-                            backgroundImage: AssetImage('lib/assets/earth.jpg'),
+                            backgroundImage:
+                            AssetImage('lib/assets/earth.jpg'),
                             onBackgroundImageError: (_, __) => const Icon(
                               Icons.image,
                               size: 50,
@@ -317,7 +308,7 @@ class HomePage extends StatelessWidget {
                                   currentTrans["card1Subtitle"]!,
                                   Colors.green[100]!,
                                   Colors.green[800]!,
-                                  language
+                                  language,
                                 ),
                               ),
                               _buildCardWithBackground(
@@ -330,7 +321,7 @@ class HomePage extends StatelessWidget {
                                   currentTrans["card2Subtitle"]!,
                                   Colors.orange[100]!,
                                   Colors.orange[800]!,
-                                  language
+                                  language,
                                 ),
                               ),
                               _buildCardWithBackground(
@@ -343,20 +334,20 @@ class HomePage extends StatelessWidget {
                                   currentTrans["card3Subtitle"]!,
                                   Colors.blue[100]!,
                                   Colors.blue[800]!,
-                                  language
+                                  language,
                                 ),
                               ),
                               _buildCardWithBackground(
                                 context,
                                 _buildFeatureCard(
-                                    context,
-                                    Icons.track_changes,
-                                    "wellness2",
-                                    currentTrans["card4Title"]!,
-                                    currentTrans["card4Subtitle"]!,
-                                    Colors.green[100]!,
-                                    Colors.blue[800]!,
-                                    language
+                                  context,
+                                  Icons.track_changes,
+                                  "wellness2",
+                                  currentTrans["card4Title"]!,
+                                  currentTrans["card4Subtitle"]!,
+                                  Colors.green[100]!,
+                                  Colors.blue[800]!,
+                                  language,
                                 ),
                               ),
                             ],
@@ -372,8 +363,72 @@ class HomePage extends StatelessWidget {
           );
         },
       ),
+      // Bottom taskbar with three evenly spaced buttons.
+      bottomNavigationBar: Container(
+        height: 60,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            IconButton(
+              icon: Icon(Icons.home, color: Colors.green[900]),
+              onPressed: () {
+
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.request_page_outlined, color: Colors.green[900]),
+              onPressed: () {
+
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.incomplete_circle, color: Colors.green[900]),
+              onPressed: () async {
+                // Get the current logged in user's id.
+                final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+
+                // Query the reports collection with the filter conditions.
+                final QuerySnapshot snapshot = await FirebaseFirestore.instance
+                    .collection('reports')
+                    .where('userId', isEqualTo: currentUserId)
+                    .where('status', isEqualTo: 'Not Approved')
+                    .get();
+
+                if (snapshot.docs.isEmpty) {
+                  // Display a friendly message if no pending reports are found.
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("You have no pending reports."),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  // If there are pending reports, navigate to MyReportsScreen.
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MyReportsScreen(userId: currentUserId),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
+
 
   // Helper method to wrap a card with its own background.
   Widget _buildCardWithBackground(BuildContext context, Widget card) {

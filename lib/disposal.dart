@@ -3,14 +3,16 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:confetti/confetti.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
-
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
 import 'help.dart';
 class DisposalPage extends StatefulWidget {
   final String responseText;
@@ -34,15 +36,21 @@ class _DisposalPageState extends State<DisposalPage> {
   int totalScore = 0;
   int visibleLines = 4;
   late List<String> youtubeLinks;
+  late String category;
   @override
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: Duration(seconds: 2));
+
+    // ✅ Extract description, tasks, and category
     Map<String, dynamic> extractedData = extractDescriptionAndTasks(widget.responseText);
     description = extractedData["description"];
     youtubeLinks = extractYouTubeLinks(description);
 
     tasks = extractedData["tasks"];
+
+    // ✅ Store the category in the category variable
+    category = extractedData["category"]; // 👈 Store category
 
     for (var task in tasks) {
       completedTasks[task] = false;
@@ -247,11 +255,19 @@ class _DisposalPageState extends State<DisposalPage> {
     String description = "";
     List<String> tasks = [];
     bool isTaskSection = false;
+    String category = "";
 
     for (String line in lines) {
       String lowerLine = line.toLowerCase().trim();
 
-      // Check for the start of task section
+      // ✅ Extract Category from Description
+      RegExp categoryRegex = RegExp(r"category of ([a-zA-Z\s]+)", caseSensitive: false);
+      Match? match = categoryRegex.firstMatch(lowerLine);
+      if (match != null) {
+        category = match.group(1)?.trim() ?? "";
+      }
+
+      // ✅ Check for the start of task section
       if (lowerLine.contains("tasks to be taken:") ||
           lowerLine.contains("task to be taken:") ||
           lowerLine.contains("tasks to be taken") ||
@@ -268,9 +284,9 @@ class _DisposalPageState extends State<DisposalPage> {
         if (RegExp(r"^\d+\.$").hasMatch(line.trim())) {
           continue;
         }
-        if (RegExp(r"^\d+\.\s").hasMatch(line) ||
-            RegExp(r"^[IVXLCDM]+\.\s").hasMatch(line) ||
-            RegExp(r"^[-•]\s").hasMatch(line)) {
+        if (RegExp(r"^\d+\.\s").hasMatch(line) || // For numeric tasks (e.g., 1. Task)
+            RegExp(r"^[IVXLCDM]+\.\s").hasMatch(line) || // For Roman numeral tasks
+            RegExp(r"^[-•]\s").hasMatch(line)) { // For bullet points
           tasks.add(line.substring(2).trim());
         } else if (line.isNotEmpty) {
           tasks.add(line.trim());
@@ -280,7 +296,11 @@ class _DisposalPageState extends State<DisposalPage> {
       }
     }
 
-    return {"description": description.trim(), "tasks": tasks};
+    return {
+      "description": description.trim(),
+      "tasks": tasks,
+      "category": category.isNotEmpty ? category : "Unknown"
+    };
   }
 
   int calculatePoints(String task) {
@@ -308,11 +328,12 @@ class _DisposalPageState extends State<DisposalPage> {
       // Save the total score and task completion date to Firestore
       await _storeCompletionData();
       _confettiController.play();
-      showSuccessDialog(context, totalScore);
+      //showSuccessDialog(context, totalScore);
     } else {
       showIncompleteDialog(context);
     }
   }
+// For converting image to bytes
   Future<void> _storeCompletionData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -322,7 +343,7 @@ class _DisposalPageState extends State<DisposalPage> {
       if (docSnapshot.exists) {
         final data = docSnapshot.data()!;
 
-        // Safely get lastTaskCompletion
+        // ✅ Get Last Completion Time
         final lastCompletionTimestamp = data['lastTaskCompletion'];
         DateTime? lastCompletion;
 
@@ -335,7 +356,7 @@ class _DisposalPageState extends State<DisposalPage> {
 
         int updatedStreak = currentStreak;
 
-        // Check if lastCompletion exists before calculating streak
+        // ✅ Streak Logic
         if (lastCompletion != null) {
           if (now.difference(lastCompletion).inDays == 1) {
             updatedStreak += 1; // Continue streak
@@ -346,13 +367,115 @@ class _DisposalPageState extends State<DisposalPage> {
           updatedStreak = 1; // First-time completion, start streak
         }
 
+        // ✅ Convert Before Image to Base64
+        String? base64BeforeImage;
+        if (widget.image != null) {
+          try {
+            Uint8List uint8List = await widget.image!.readAsBytes(); // Read file as bytes
+            base64BeforeImage = base64Encode(uint8List); // Encode to base64
+          } catch (e) {
+            print("Error encoding before image to base64: $e");
+          }
+        }
+
+        // ✅ Fetch Quantity and After Image
+        int? quantity = await _getQuantityFromUser();
+        File? afterImageFile = await _pickImageFromUser();
+
+        // ✅ Convert After Image to Base64
+        String? base64AfterImage;
+        if (afterImageFile != null) {
+          try {
+            Uint8List uint8List = await afterImageFile.readAsBytes();
+            base64AfterImage = base64Encode(uint8List);
+          } catch (e) {
+            print("Error encoding after image to base64: $e");
+          }
+        }
+
+        // ✅ Update Firestore
         await userDoc.update({
-          'totalScore': FieldValue.increment(totalScore),
           'lastTaskCompletion': now,
           'streakCount': updatedStreak,
+          'status': 'waiting',
+          if (quantity != null) 'quantity': quantity,
+          if (base64BeforeImage != null) 'beforeImage': base64BeforeImage,
+          if (base64AfterImage != null) 'completedImage': base64AfterImage,
+        });
+
+        // ✅ Success Message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Completion data stored successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // ✅ Display "Task Under Verification" Message After Success
+        Future.delayed(const Duration(seconds: 2), () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Your task is under verification! You can redeem points later. See Profile.'),
+              backgroundColor: Colors.blue,
+              duration: Duration(seconds: 3),
+            ),
+          );
         });
       }
     }
+  }
+
+// ✅ Method to get quantity from user
+  Future<int?> _getQuantityFromUser() async {
+    TextEditingController _quantityController = TextEditingController();
+
+    return await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter Quantity'),
+        content: TextField(
+          controller: _quantityController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Quantity',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(null),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final quantity = int.tryParse(_quantityController.text);
+              if (quantity != null && quantity > 0) {
+                Navigator.of(context).pop(quantity);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Invalid quantity'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+// ✅ Method to pick after image from user
+  Future<File?> _pickImageFromUser() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      return File(pickedFile.path);
+    }
+    return null;
   }
 
 
@@ -812,6 +935,7 @@ class _DisposalPageState extends State<DisposalPage> {
                                           nearestOfficer: nearestOfficer,
                                           image: widget.image,
                                           text: description,
+                                          category : category
                                         ),
                                       ),
                                     );

@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui'; // For ImageFilter
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ease/wellness_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -15,11 +17,13 @@ class HelpPage extends StatelessWidget {
   final Map<String, dynamic> nearestOfficer;
   final File image;
   final String text;
+  final String category;
 
   HelpPage({
     required this.nearestOfficer,
     required this.image,
     required this.text,
+    required this.category
   });
   double calculateDistance(
       double lat1, double lon1, double lat2, double lon2) {
@@ -93,6 +97,219 @@ class HelpPage extends StatelessWidget {
     }
     return await geo.Geolocator.getCurrentPosition();
   }
+
+  void _raiseComplaint(BuildContext context, File imageFile, String userId, String category) async {
+    String complaintText = '';
+    int quantity = 0;
+    double weightPerKg = 0.0;
+    DateTime date = DateTime.now();
+    String status = 'Not Approved';
+
+    // ✅ Convert File to Base64
+    String base64Image = '';
+    if (imageFile != null) {
+      List<int> imageBytes = await imageFile.readAsBytes();
+      base64Image = base64Encode(imageBytes);
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Raise Complaint',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (imageFile != null)
+                  Container(
+                    height: 150,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                      image: DecorationImage(
+                        image: FileImage(imageFile),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
+                _buildInputField(
+                  label: 'Quantity',
+                  hintText: 'Enter quantity',
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) => quantity = int.tryParse(value) ?? 0,
+                ),
+
+                const SizedBox(height: 16),
+
+                _buildInputField(
+                  label: 'Weight per kg',
+                  hintText: 'Enter weight',
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) => weightPerKg = double.tryParse(value) ?? 0.0,
+                ),
+
+                const SizedBox(height: 16),
+
+                TextField(
+                  onChanged: (value) => complaintText = value,
+                  decoration: InputDecoration(
+                    hintText: 'Describe your complaint...',
+                    labelText: 'Complaint Description',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () async {
+                if (complaintText.isNotEmpty && quantity > 0 && weightPerKg > 0) {
+                  // Save the complaint (await if your saveComplaint returns a Future)
+                  await saveComplaint(
+                    userId: userId,
+                    category: category,
+                    complaintText: complaintText,
+                    quantity: quantity,
+                    weightPerKg: weightPerKg,
+                    date: date,
+                    status: status,
+                    base64Image: base64Image,
+                  );
+
+                  // Close the dialog
+                  Navigator.of(context).pop();
+
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Complaint submitted successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+
+                  // After a delay, navigate to WellnessPage
+                  Future.delayed(const Duration(seconds: 2), () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => WellnessPage()),
+                    );
+                  });
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please fill all required fields.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Submit',style: TextStyle(color: Colors.white),),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      }
+    );
+  }
+
+  Widget _buildInputField({
+    required String label,
+    required String hintText,
+    required TextInputType keyboardType,
+    required Function(String) onChanged,
+  }) {
+    return TextField(
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hintText,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        fillColor: Colors.grey[100],
+      ),
+      onChanged: onChanged,
+    );
+  }
+
+
+// ✅ Save complaint to collection (Example function)
+  Future<void> saveComplaint({
+    required String userId,
+    required String category,
+    required String complaintText,
+    required int quantity,
+    required double weightPerKg,
+    required DateTime date,
+    required String status,
+    required String base64Image,
+  }) async {
+    try {
+      // Request location permission
+      geo.LocationPermission permission = await geo.Geolocator.requestPermission();
+      if (permission == geo.LocationPermission.denied || permission == geo.LocationPermission.deniedForever) {
+        print("Location permission denied.");
+        return;
+      }
+
+      // Get current position
+      geo.Position position = await geo.Geolocator.getCurrentPosition(
+        desiredAccuracy: geo.LocationAccuracy.high,
+      );
+
+      // Save to Firestore
+      await FirebaseFirestore.instance.collection('reports').add({
+        'userId': userId,
+        'category': category,
+        'complaintText': complaintText,
+        'quantity': quantity,
+        'weightPerKg': weightPerKg,
+        'date': date.toIso8601String(),
+        'status': status,
+        'image': base64Image,
+        'latitude': position.latitude,  // Storing latitude
+        'longitude': position.longitude, // Storing longitude
+      });
+
+      print("Complaint saved successfully with location!");
+    } catch (e) {
+      print("Error saving complaint: $e");
+    }
+  }
+
   // Function to share a report via WhatsApp (using share_plus)
   Future<void> _sendReportViaWhatsApp(BuildContext context) async {
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -114,11 +331,17 @@ class HelpPage extends StatelessWidget {
           "Description:\n$text\n\n"
           "Thank you,\n$userName";
 
-      await Share.shareXFiles(
-        [XFile(image.path)],
-        text: reportLetter,
-        subject: "Incident Report",
-      );
+      const String phoneNumber = "+917010161033";
+      final String whatsappUrl = "https://wa.me/$phoneNumber?text=$reportLetter";
+
+      // ✅ Open WhatsApp URL
+      if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
+        await launchUrl(Uri.parse(whatsappUrl), mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to open WhatsApp.")),
+        );
+      }
     } catch (e) {
       print("⚠️ Error sending report: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -665,118 +888,191 @@ class HelpPage extends StatelessWidget {
           ),
         ],
       ),
-      floatingActionButton: AnimatedFABRow(
+      floatingActionButton: AnimatedFABColumn(
         onMapPressed: () => _openGoogleMaps(context),
         onReportPressed: () => _sendReportViaWhatsApp(context),
+        onComplaintPressed: () => _raiseComplaint(context,image,FirebaseAuth.instance.currentUser!.uid,category),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }
 
-class AnimatedFABRow extends StatefulWidget {
+class AnimatedFABColumn extends StatefulWidget {
   final VoidCallback onMapPressed;
   final VoidCallback onReportPressed;
-  const AnimatedFABRow({
+  final VoidCallback onComplaintPressed;
+
+  const AnimatedFABColumn({
     Key? key,
     required this.onMapPressed,
     required this.onReportPressed,
+    required this.onComplaintPressed,
   }) : super(key: key);
 
   @override
-  _AnimatedFABRowState createState() => _AnimatedFABRowState();
+  _AnimatedFABColumnState createState() => _AnimatedFABColumnState();
 }
 
-class _AnimatedFABRowState extends State<AnimatedFABRow> {
+class _AnimatedFABColumnState extends State<AnimatedFABColumn> {
   double _mapScale = 1.0;
   double _reportScale = 1.0;
+  double _complaintScale = 1.0;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // "View on Map" Button with scale animation.
-          GestureDetector(
-            onTapDown: (_) => setState(() => _mapScale = 0.95),
-            onTapUp: (_) {
-              setState(() => _mapScale = 1.0);
-              widget.onMapPressed();
-            },
-            onTapCancel: () => setState(() => _mapScale = 1.0),
-            child: AnimatedScale(
-              scale: _mapScale,
-              duration: const Duration(milliseconds: 100),
-              child: FloatingActionButton.extended(
-                onPressed: widget.onMapPressed,
-                backgroundColor: Colors.orangeAccent,
-                icon: const Icon(Icons.map, color: Colors.white),
-                label: const Text(
-                  "View on Map",
-                  style: TextStyle(color: Colors.white),
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 16.0, right: 16.0),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.vertical,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.end, // Align buttons to the right
+            children: [
+              // "View on Map" Button
+              GestureDetector(
+                onTapDown: (_) => setState(() => _mapScale = 0.95),
+                onTapUp: (_) {
+                  setState(() => _mapScale = 1.0);
+                  widget.onMapPressed();
+                },
+                onTapCancel: () => setState(() => _mapScale = 1.0),
+                child: AnimatedScale(
+                  scale: _mapScale,
+                  duration: const Duration(milliseconds: 100),
+                  child: FloatingActionButton.extended(
+                    onPressed: widget.onMapPressed,
+                    backgroundColor: Colors.orangeAccent,
+                    elevation: 6,
+                    icon: const Icon(Icons.map, color: Colors.white),
+                    label: const Text(
+                      'View on Map',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          // "Report" Button with custom gradient style and scale animation.
-          GestureDetector(
-            onTapDown: (_) => setState(() => _reportScale = 0.95),
-            onTapUp: (_) {
-              setState(() => _reportScale = 1.0);
-              widget.onReportPressed();
-            },
-            onTapCancel: () => setState(() => _reportScale = 1.0),
-            child: AnimatedScale(
-              scale: _reportScale,
-              duration: const Duration(milliseconds: 100),
-              child: FloatingActionButton.extended(
-                onPressed: widget.onReportPressed,
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                label: Ink(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.green, Colors.lightBlueAccent],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blueAccent.withOpacity(0.5),
-                        offset: const Offset(0, 4),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: Container(
-                    constraints: const BoxConstraints(minWidth: 120, minHeight: 48),
-                    alignment: Alignment.center,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.report, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text(
-                          "Report",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+              const SizedBox(height: 16),
+              // "Report" Button
+              GestureDetector(
+                onTapDown: (_) => setState(() => _reportScale = 0.95),
+                onTapUp: (_) {
+                  setState(() => _reportScale = 1.0);
+                  widget.onReportPressed();
+                },
+                onTapCancel: () => setState(() => _reportScale = 1.0),
+                child: AnimatedScale(
+                  scale: _reportScale,
+                  duration: const Duration(milliseconds: 100),
+                  child: FloatingActionButton.extended(
+                    onPressed: widget.onReportPressed,
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    label: Ink(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Colors.green, Colors.lightBlueAccent],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                      ],
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blueAccent.withOpacity(0.5),
+                            offset: const Offset(0, 4),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Container(
+                        constraints:
+                        const BoxConstraints(minWidth: 140, minHeight: 48),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.report, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              "Report",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+              const SizedBox(height: 16),
+              // "Clean" Button (Raise Complaint)
+              GestureDetector(
+                onTapDown: (_) => setState(() => _complaintScale = 0.95),
+                onTapUp: (_) {
+                  setState(() => _complaintScale = 1.0);
+                  widget.onComplaintPressed();
+                },
+                onTapCancel: () => setState(() => _complaintScale = 1.0),
+                child: AnimatedScale(
+                  scale: _complaintScale,
+                  duration: const Duration(milliseconds: 100),
+                  child: FloatingActionButton.extended(
+                    onPressed: widget.onComplaintPressed,
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    label: Ink(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Colors.red, Colors.deepOrangeAccent],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.redAccent.withOpacity(0.5),
+                            offset: const Offset(0, 4),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Container(
+                        constraints:
+                        const BoxConstraints(minWidth: 160, minHeight: 48),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.cleaning_services, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              "Clean",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
-
