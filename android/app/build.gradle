@@ -62,7 +62,7 @@ flutter {
 }
 dependencies {
     // Add Firebase BOM for version management
-    implementation platform('com.google.firebase:firebase-bom:33.9.0') // Ensure to use the latest version
+    implementation platform('com.google.firebase:firebase-bom:33.16.0') // Ensure to use the latest version
 
     // Add Firebase Performance Monitoring
     implementation 'com.google.firebase:firebase-perf'
