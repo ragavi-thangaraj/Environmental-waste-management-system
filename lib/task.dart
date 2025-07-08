@@ -15,6 +15,8 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:confetti/confetti.dart';
 
 class Task {
   final int level;
@@ -37,6 +39,7 @@ class _TaskPageState extends State<TaskPage>
 
   StreamSubscription? _verifySubscription;
   late AnimationController _bgAnimationController;
+  final ConfettiController _confettiController = ConfettiController(duration: const Duration(seconds: 2));
 
   @override
   void initState() {
@@ -58,6 +61,7 @@ class _TaskPageState extends State<TaskPage>
   void dispose() {
     _verifySubscription?.cancel();
     _bgAnimationController.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -516,6 +520,7 @@ class _TaskPageState extends State<TaskPage>
 
     // Only push the route if it has been assigned.
     if (route != null) {
+      _confettiController.play(); // Play confetti on navigation
       Navigator.push(context, route);
     }
   }
@@ -690,17 +695,98 @@ class _TaskPageState extends State<TaskPage>
     return Scaffold(
       body: Stack(
         children: [
-          // Fading background image.
-          FadingBackground(),
-          SafeArea(
-            child: Column(
-              children: [
-                const PremiumAppBar(),
-                Expanded(
-                  child: CandyMap(
-                      tasks: tasks, onLevelSelected: _onLevelSelected),
+          // Gradient background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF2A7B9B), Color(0xFF6DD5ED)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+          // Wavy header with globe animation
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: ClipPath(
+              clipper: _WavyHeaderClipper(),
+              child: Container(
+                height: 220,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF2A7B9B), Color(0xFF6DD5ED)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
+                child: Stack(
+                  children: [
+                    Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 32, bottom: 16),
+                        child: Image.asset(
+                          'lib/assets/happy_earth.gif',
+                          height: 100,
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 60.0),
+                        child: Text(
+                          'Green Adventure!',
+                          style: GoogleFonts.baloo2(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black26,
+                                blurRadius: 8,
+                                offset: Offset(2, 2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Confetti effect
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              colors: [
+                Color(0xFF2A7B9B),
+                Color(0xFF6DD5ED),
+                Colors.yellow,
+                Colors.pink,
+                Colors.orange,
               ],
+              numberOfParticles: 30,
+              maxBlastForce: 20,
+              minBlastForce: 8,
+              emissionFrequency: 0.05,
+              gravity: 0.2,
+            ),
+          ),
+          // Main content: Candy Crush style vertical path
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 180.0, left: 0, right: 0),
+              child: _CandyCrushPath(
+                tasks: tasks,
+                onLevelSelected: _onLevelSelected,
+              ),
             ),
           ),
         ],
@@ -708,6 +794,127 @@ class _TaskPageState extends State<TaskPage>
     );
   }
 }
+
+// Wavy header clipper
+class _WavyHeaderClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    Path path = Path();
+    path.lineTo(0, size.height - 60);
+    path.quadraticBezierTo(size.width / 2, size.height, size.width, size.height - 60);
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+// Candy Crush style vertical path widget
+class _CandyCrushPath extends StatelessWidget {
+  final List<Task> tasks;
+  final Function(int) onLevelSelected;
+  const _CandyCrushPath({required this.tasks, required this.onLevelSelected});
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      itemCount: tasks.length,
+      itemBuilder: (context, i) {
+        final task = tasks[i];
+        final isUnlocked = task.isUnlocked;
+        final isCompleted = task.isCompleted;
+        return Column(
+          children: [
+            GestureDetector(
+              onTap: isUnlocked ? () => onLevelSelected(task.level) : null,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Candy path connector
+                  if (i > 0)
+                    Positioned(
+                      top: -40,
+                      child: Container(
+                        width: 8,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              isUnlocked ? Color(0xFF2A7B9B) : Colors.grey.shade400,
+                              isUnlocked ? Color(0xFF6DD5ED) : Colors.grey.shade200,
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  // Candy node
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutBack,
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: isUnlocked
+                            ? [Color(0xFF2A7B9B), Color(0xFF6DD5ED)]
+                            : [Colors.grey.shade300, Colors.grey.shade500],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isUnlocked ? Color(0xFF2A7B9B).withOpacity(0.3) : Colors.black12,
+                          blurRadius: 12,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: isCompleted ? Colors.amber : Colors.white,
+                        width: isCompleted ? 4 : 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: isCompleted
+                          ? Icon(Icons.star, color: Colors.amber, size: 40)
+                          : isUnlocked
+                              ? Icon(Icons.cake, color: Colors.white, size: 40)
+                              : Icon(Icons.lock, color: Colors.white, size: 36),
+                    ),
+                  ),
+                  // Level number
+                  Positioned(
+                    bottom: 10,
+                    child: Text(
+                      'Level ${task.level}',
+                      style: GoogleFonts.baloo2(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isUnlocked ? Color(0xFF2A7B9B) : Colors.grey.shade600,
+                        shadows: [
+                          Shadow(
+                            color: Colors.white,
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        );
+      },
+    );
+  }
+}
+
 /// Animated Premium App Bar with an animated title.
 class PremiumAppBar extends StatelessWidget {
   const PremiumAppBar({Key? key}) : super(key: key);
@@ -767,366 +974,6 @@ class PremiumAppBar extends StatelessWidget {
           const SizedBox(width: 48),
         ],
       ),
-    );
-  }
-}
-/// Scrollable map with animated level circles.
-class CandyMap extends StatelessWidget {
-  final List<Task> tasks;
-  final Function(int) onLevelSelected;
-  const CandyMap({Key? key, required this.tasks, required this.onLevelSelected})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    List<Offset> levelPositions = _calculateLevelPositions(context, tasks.length);
-    final totalHeight = (tasks.length * 250).toDouble();
-
-    return SingleChildScrollView(
-      child: SizedBox(
-        width: double.infinity,
-        height: totalHeight,
-        child: Stack(
-          children: [
-            // Custom path behind circles
-            CustomPaint(
-              size: Size(MediaQuery.of(context).size.width, totalHeight),
-              painter: PremiumPathPainter(levelPositions),
-            ),
-            // Animated level circles
-            for (int i = 0; i < tasks.length; i++)
-              Positioned(
-                left: levelPositions[i].dx,
-                top: levelPositions[i].dy,
-                child: GestureDetector(
-                  onTap: () => onLevelSelected(tasks[i].level),
-                  child: LevelCircle(task: tasks[i]),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<Offset> _calculateLevelPositions(BuildContext context, int count) {
-    double leftX = 40;
-    double rightX = MediaQuery.of(context).size.width - 120;
-    double startY = 50;
-    double verticalSpacing = 200;
-
-    List<Offset> positions = [];
-    for (int i = 0; i < count; i++) {
-      bool isEven = i % 2 == 0;
-      double x = isEven ? leftX : rightX;
-      double y = startY + i * verticalSpacing;
-      positions.add(Offset(x, y));
-    }
-    return positions;
-  }
-}
-/// Custom path painter with a smooth spline.
-class PremiumPathPainter extends CustomPainter {
-  final List<Offset> positions;
-  PremiumPathPainter(this.positions);
-
-  Path _createSmoothPath(List<Offset> points) {
-    Path path = Path();
-    if (points.isEmpty) return path;
-    path.moveTo(points[0].dx, points[0].dy);
-    for (int i = 0; i < points.length - 1; i++) {
-      Offset p0 = i == 0 ? points[0] : points[i - 1];
-      Offset p1 = points[i];
-      Offset p2 = points[i + 1];
-      Offset p3 = (i + 2 < points.length) ? points[i + 2] : p2;
-
-      Offset cp1 = p1 + (p2 - p0) / 6;
-      Offset cp2 = p2 - (p3 - p1) / 6;
-      path.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, p2.dx, p2.dy);
-    }
-    return path;
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    List<Offset> offsetPositions =
-    positions.map((p) => p + const Offset(40, 40)).toList();
-    Path path = _createSmoothPath(offsetPositions);
-
-    final Paint glowPaint = Paint()
-      ..color = Colors.orangeAccent.withOpacity(0.6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 14
-      ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
-
-    final Paint gradientPaint = Paint()
-      ..strokeWidth = 8
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..shader = const LinearGradient(
-        colors: [Colors.green, Colors.greenAccent],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    final Paint highlightPaint = Paint()
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..color = Colors.white.withOpacity(0.8)
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawPath(path, glowPaint);
-    canvas.drawPath(path, gradientPaint);
-    canvas.drawPath(path, highlightPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant PremiumPathPainter oldDelegate) => true;
-}
-/// LevelCircle widget with animated effects.
-class LevelCircle extends StatefulWidget {
-  final Task task;
-  const LevelCircle({Key? key, required this.task}) : super(key: key);
-
-  @override
-  State<LevelCircle> createState() => _LevelCircleState();
-}
-class _LevelCircleState extends State<LevelCircle>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    )..forward();
-
-    _scaleAnimation =
-        Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(
-          parent: _animController,
-          curve: Curves.easeOutBack,
-        ));
-
-    _fadeAnimation =
-        Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-          parent: _animController,
-          curve: Curves.easeIn,
-        ));
-  }
-
-  @override
-  void didUpdateWidget(covariant LevelCircle oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.task != widget.task) {
-      _animController.forward(from: 0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            widget.task.isCompleted
-                ? Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(
-                  Icons.star,
-                  size: 100,
-                  color: Colors.amber,
-                  shadows: const [
-                    Shadow(
-                      color: Colors.black38,
-                      blurRadius: 8,
-                      offset: Offset(2, 2),
-                    ),
-                  ],
-                ),
-                Text(
-                  '${widget.task.level}',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            )
-                : Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: widget.task.isUnlocked
-                      ? [Colors.lightGreen.shade400, Colors.green.shade800]
-                      : [Colors.grey.shade300, Colors.grey.shade600],
-                  stops: const [0.3, 1.0],
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black38,
-                    blurRadius: 8,
-                    offset: Offset(2, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  '${widget.task.level}',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-            if (!widget.task.isUnlocked)
-              EcoPulsatingLock(), // Assume this is a custom animated lock widget.
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class FadingBackground extends StatefulWidget {
-  @override
-  _FadingBackgroundState createState() => _FadingBackgroundState();
-}
-class _FadingBackgroundState extends State<FadingBackground>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _opacityAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    // Adjust duration as desired.
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(seconds: 3),
-    );
-    _opacityAnimation = Tween<double>(begin: 0.0, end: 0.2).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-    // Start the fade in animation.
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacityAnimation,
-      child: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('lib/assets/ease.jpg'),
-            fit: BoxFit.cover,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class EcoPulsatingLock extends StatefulWidget {
-  @override
-  _EcoPulsatingLockState createState() => _EcoPulsatingLockState();
-}
-
-class _EcoPulsatingLockState extends State<EcoPulsatingLock>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _opacityAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-
-    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-    _opacityAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: Opacity(
-            opacity: _opacityAnimation.value,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    Colors.black.withOpacity(0.6),
-                    Colors.black.withOpacity(0.3),
-                  ],
-                  center: Alignment.center,
-                  radius: 0.8,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black45,
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  )
-                ],
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.lock,
-                  size: 40,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }
