@@ -27,6 +27,8 @@ class _ProfilePageState extends State<ProfilePage> {
     return {};
   }
 
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
   void _logout(BuildContext context) async {
     try {
       // Show a loading indicator
@@ -40,15 +42,12 @@ class _ProfilePageState extends State<ProfilePage> {
       await FirebaseAuth.instance.signOut();
 
       // Handle Google Sign-In logout
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      if (await googleSignIn.isSignedIn()) {
-        await googleSignIn.signOut();
-        try {
-          await googleSignIn.disconnect();
-        } catch (e) {
-          // Ignore disconnect errors as the session might already be invalid
-          debugPrint('Google disconnect error: $e');
-        }
+      try {
+        await _googleSignIn.signOut();
+        await _googleSignIn.disconnect();
+      } catch (e) {
+        // Ignore disconnect errors as the session might already be invalid
+        debugPrint('Google disconnect error: $e');
       }
 
       // Clear app data from SharedPreferences
@@ -90,204 +89,192 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Use a layered Stack to create a rich background
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _fetchUserData(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error fetching user data'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text('No user data available'));
-          } else {
-            final userData = snapshot.data!;
-            final name = userData['name'] ?? 'No Name';
-            final phone = userData['phone'] ?? 'No Phone';
-            final profileUrl = userData['profile'] ??
-                'https://via.placeholder.com/150'; // Fallback profile URL
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          "Profile",
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Colors.green[800],
+            letterSpacing: 1.1,
+          ),
+        ),
+        actions: [
+          OutlinedButton.icon(
+            onPressed: () => _logout(context),
+            icon: Icon(Icons.logout, color: Colors.redAccent),
+            label: Text("Logout", style: TextStyle(color: Colors.redAccent)),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: Colors.redAccent, width: 1.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              backgroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFe8f5e9), Color(0xFFb2f7ef), Colors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: _fetchUserData(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Error fetching user data'));
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return Center(child: Text('No user data available'));
+            } else {
+              final userData = snapshot.data!;
+              final name = userData['name'] ?? 'No Name';
+              final phone = userData['phone'] ?? 'No Phone';
+              final profileUrl = userData['profile'] ?? 'https://via.placeholder.com/150';
+              final totalScore = userData['totalScore'] ?? 0;
+              final lastCompletion = userData['lastTaskCompletion'] != null
+                  ? (userData['lastTaskCompletion'] as Timestamp).toDate()
+                  : DateTime.now();
+              final streakCount = userData['streakCount'] ?? 0;
+              final now = DateTime.now();
+              final isStreakActive = now.difference(lastCompletion).inDays <= 1;
 
-            // Additional stats (if any)
-            final totalScore = userData['totalScore'] ?? 0;
-            final lastCompletion = userData['lastTaskCompletion'] != null
-                ? (userData['lastTaskCompletion'] as Timestamp).toDate()
-                : DateTime.now();
-            final streakCount = userData['streakCount'] ?? 0;
-            final now = DateTime.now();
-            final isStreakActive = now.difference(lastCompletion).inDays <= 1;
-
-            return Stack(
-              children: [
-                // Background Gradient
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.green.shade700,
-                        Colors.green.shade400,
-                        Colors.green.shade200,
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
-                ),
-                SafeArea(
+              return Center(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 40),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Header with title and logout button
-                      Padding(
-                        padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "Profile",
-                              style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.logout, color: Colors.white),
-                              onPressed: () {
-                                _logout(context);
-                              },
+                      SizedBox(height: 30),
+                      // Floating profile picture with shadow
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.18),
+                              blurRadius: 18,
+                              offset: Offset(0, 8),
                             ),
                           ],
                         ),
-                      ),
-                      // Layered container for profile details
-                      Expanded(
-                        child: Container(
-                          width: double.infinity,
-                          margin: EdgeInsets.only(top: 10),
-                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(30),
-                              topRight: Radius.circular(30),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                offset: Offset(0, -3),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                // Profile picture without an edit overlay
-                                CircleAvatar(
-                                  radius: 60,
-                                  backgroundImage: NetworkImage(profileUrl),
-                                ),
-                                SizedBox(height: 20),
-                                // User name and phone details
-                                Text(
-                                  name,
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                SizedBox(height: 10),
-                                Text(
-                                  'Phone: $phone',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                                SizedBox(height: 20),
-                                // Edit Profile button
-                                ElevatedButton.icon(
-                                  onPressed: () => _editProfile(userData),
-                                  icon: Icon(Icons.edit,color: Colors.white,),
-                                  label: Text("Edit Profile",style: (TextStyle(color: Colors.white)),),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 20, vertical: 10),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(height: 30),
-                                // Stats Cards (read-only)
-                                Card(
-                                  elevation: 4,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-                                  margin: EdgeInsets.symmetric(vertical: 10),
-                                  child: ListTile(
-                                    leading:
-                                    Icon(Icons.score, color: Colors.blueAccent),
-                                    title: Text('Total Score'),
-                                    trailing: Text(
-                                      '$totalScore',
-                                      style: TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ),
-                                Card(
-                                  elevation: 4,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-                                  margin: EdgeInsets.symmetric(vertical: 10),
-                                  child: ListTile(
-                                    leading: Icon(Icons.calendar_today,
-                                        color: Colors.green),
-                                    title: Text('Last Task Completion'),
-                                    trailing: Text(
-                                      '${lastCompletion.toLocal()}'.split(' ')[0],
-                                    ),
-                                  ),
-                                ),
-                                Card(
-                                  elevation: 4,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-                                  margin: EdgeInsets.symmetric(vertical: 10),
-                                  child: ListTile(
-                                    leading: Icon(Icons.whatshot,
-                                        color: Colors.orangeAccent),
-                                    title: Text('Current Streak'),
-                                    trailing: Text(
-                                      isStreakActive
-                                          ? '$streakCount days'
-                                          : 'No active streak',
-                                      style: TextStyle(
-                                        color: isStreakActive
-                                            ? Colors.green
-                                            : Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                        child: CircleAvatar(
+                          radius: 64,
+                          backgroundColor: Colors.white,
+                          child: CircleAvatar(
+                            radius: 60,
+                            backgroundImage: NetworkImage(profileUrl),
                           ),
                         ),
                       ),
+                      SizedBox(height: 28),
+                      // Solid white profile info card (no glassmorphic)
+                      Card(
+                        elevation: 6,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                        color: Colors.white,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                name,
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green[900],
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              Text(
+                                'Phone: $phone',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              SizedBox(height: 24),
+                              // Gradient Edit Profile button
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Color(0xFF43e97b), Color(0xFF38f9d7)],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(22),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.green.withOpacity(0.12),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _editProfile(userData),
+                                  icon: Icon(Icons.edit, color: Colors.white),
+                                  label: Text("Edit Profile", style: TextStyle(color: Colors.white, fontSize: 17)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    padding: EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(22),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 36),
+                      // Stats
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _ElegantStatCard(
+                            icon: Icons.score,
+                            label: 'Total Score',
+                            value: '$totalScore',
+                            color: Colors.blueAccent,
+                          ),
+                          _ElegantStatCard(
+                            icon: Icons.whatshot,
+                            label: 'Streak',
+                            value: isStreakActive ? '$streakCount days' : 'No streak',
+                            color: isStreakActive ? Colors.green : Colors.redAccent,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 18),
+                      _ElegantStatCard(
+                        icon: Icons.calendar_today,
+                        label: 'Last Completion',
+                        value: '${lastCompletion.toLocal()}'.split(' ')[0],
+                        color: Colors.orange,
+                      ),
+                      SizedBox(height: 40),
                     ],
                   ),
                 ),
-              ],
-            );
-          }
-        },
+              );
+            }
+          },
+        ),
       ),
     );
   }
@@ -429,6 +416,37 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Elegant stat card widget for profile stats
+class _ElegantStatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  const _ElegantStatCard({required this.icon, required this.label, required this.value, required this.color});
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      color: Colors.white,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 30),
+            SizedBox(height: 7),
+            Text(label, style: TextStyle(fontSize: 15, color: color, fontWeight: FontWeight.w600)),
+            SizedBox(height: 3),
+            Text(value, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black87)),
+          ],
+        ),
       ),
     );
   }

@@ -110,137 +110,41 @@ class _WellnessPageState extends State<WellnessPage1> {
 
   Future<void> _fetchImageDescription(File image) async {
     setState(() => _isLoading = true);
-
-    // Fetch API keys from Firestore
-    List<String> apiKeys = await _fetchAPIKeys();
-    if (apiKeys.isEmpty) {
-      setState(() => _isLoading = false);
-      _showUserMessage("No API keys available. Please try again later.");
-      return;
-    }
-
-    for (String apiKey in apiKeys) {
-      bool success = await _sendImageToAPI(image, apiKey);
-      if (success) return; // Exit if a successful response is received
-    }
-
-    // If all API keys fail
-    setState(() => _isLoading = false);
-    _showUserMessage("All API keys failed. Please try again later.");
-  }
-
-// Function to fetch API keys from Firestore
-  Future<List<String>> _fetchAPIKeys() async {
     try {
-      print("🔄 Fetching API Keys from Firestore...");
-      DocumentSnapshot<Map<String, dynamic>> doc = await FirebaseFirestore.instance
-          .collection("company")
-          .doc("verification") // Adjust doc ID if needed
-          .get();
-
-      if (doc.exists && doc.data() != null && doc.data()!.containsKey("keys")) {
-        List<String> apiKeys = List<String>.from(doc.data()!["keys"]);
-        print("✅ API Keys Retrieved: ${apiKeys.length}");
-        return apiKeys;
-      } else {
-        print("❌ API Key array not found in Firestore!");
-      }
-    } catch (e) {
-      print("⚠️ Error fetching API Keys: $e");
-    }
-    return [];
-  }
-
-  Future<bool> _sendImageToAPI(File image, String apiKey) async {
-    try {
-      // Convert the picked image to bytes and decode it
-      typed_data.Uint8List imageBytes = await image.readAsBytes();
-      img.Image? pickedImage = img.decodeImage(imageBytes);
-
-      if (pickedImage == null) {
-        _showUserMessage("Invalid image format.");
-        return false;
-      }
-
-      // Fetch user's recycled images from Firestore
-      String userId = FirebaseAuth.instance.currentUser!.uid;
-      DocumentSnapshot<Map<String, dynamic>> userDoc =
-      await FirebaseFirestore.instance.collection('users').doc(userId).get();
-
-      if (userDoc.exists && userDoc.data() != null) {
-        List<dynamic> recycledImages = userDoc.data()!['recycledImages'] ?? [];
-
-        for (String base64String in recycledImages) {
-          typed_data.Uint8List storedBytes = typed_data.Uint8List.fromList(base64Decode(base64String));
-          img.Image? storedImage = img.decodeImage(storedBytes);
-
-          if (storedImage != null && _compareImages(pickedImage, storedImage)) {
-            _showAlert(context, "No Reusing Please Be ethical");
-            return false;
-          }
-        }
-      }
-
-      // Proceed with the API call
-      var url = Uri.parse("https://general-detection.p.rapidapi.com/v1/results?algo=algo1");
-      var request = http.MultipartRequest("POST", url)
-        ..headers["x-rapidapi-host"] = "general-detection.p.rapidapi.com"
-        ..headers["x-rapidapi-key"] = apiKey;
+      var url = Uri.parse("https://SanmathiSethu06-ObjectDetectionAPI.hf.space/detect");
+      var request = http.MultipartRequest("POST", url);
       request.files.add(await http.MultipartFile.fromPath("image", image.path));
-
       var response = await request.send();
       var responseBody = await response.stream.bytesToString();
-
       if (response.statusCode == 200) {
         var data = jsonDecode(responseBody);
-        Map<String, int> objectCounts = {};
-
-        if (data["results"] is List && data["results"].isNotEmpty) {
-          for (var result in data["results"]) {
-            if (result["entities"] is List) {
-              for (var entity in result["entities"]) {
-                if (entity["objects"] is List) {
-                  for (var object in entity["objects"]) {
-                    if (object["entities"] is List) {
-                      for (var inner in object["entities"]) {
-                        if (inner["classes"] is Map) {
-                          Map classesMap = inner["classes"];
-                          classesMap.forEach((key, value) {
-                            objectCounts[key] = (objectCounts[key] ?? 0) + 1;
-                          });
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
+        if (data["status"] == 200 && data["labels"] is Map) {
+          Map<String, dynamic> labels = Map<String, dynamic>.from(data["labels"]);
+          setState(() {
+            _isLoading = false;
+            _imageDescription = labels.toString();
+          });
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ImageResultPage1(image: image, descriptionText: labels),
+            ),
+          );
+          return;
+        } else {
+          _showUserMessage("No objects detected in the image.");
         }
-
-        setState(() {
-          _isLoading = false;
-          _imageDescription = objectCounts.toString();
-        });
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ImageResultPage1(image: image, descriptionText: objectCounts),
-          ),
-        );
-        return true;
       } else {
         _showUserMessage("API Error: ${response.statusCode}");
       }
     } catch (e) {
-      print("⚠️ API Request Error: $e");
+      print("API Request Error: $e");
       _showUserMessage("An error occurred while processing the image.");
     }
-    return false;
+    setState(() => _isLoading = false);
   }
 
-// Function to compare two images pixel by pixel
+  // Function to compare two images pixel by pixel
   bool _compareImages(img.Image img1, img.Image img2) {
     if (img1.width != img2.width || img1.height != img2.height) {
       return false;

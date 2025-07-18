@@ -315,19 +315,6 @@ class HomePage extends StatelessWidget {
                                 context,
                                 _buildFeatureCard(
                                   context,
-                                  Icons.nature_people,
-                                  "wellness",
-                                  currentTrans["card2Title"]!,
-                                  currentTrans["card2Subtitle"]!,
-                                  Colors.orange[100]!,
-                                  Colors.orange[800]!,
-                                  language,
-                                ),
-                              ),
-                              _buildCardWithBackground(
-                                context,
-                                _buildFeatureCard(
-                                  context,
                                   Icons.track_changes,
                                   "daily",
                                   currentTrans["card3Title"]!,

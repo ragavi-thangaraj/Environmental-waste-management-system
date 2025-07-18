@@ -602,22 +602,23 @@ class _DisposalPageState extends State<DisposalPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.green.shade900, Colors.green.shade500],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+              colors: [Color(0xFF0f9d58), Color(0xFF43e97b), Color(0xFF38f9d7)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.vertical(
               bottom: Radius.circular(40),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black38,
+                color: Colors.black26,
                 offset: Offset(0, 4),
                 blurRadius: 8,
               ),
@@ -633,14 +634,14 @@ class _DisposalPageState extends State<DisposalPage> {
                   Text(
                     "Disposal Measures",
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 26,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                       shadows: [
                         Shadow(
                           offset: Offset(2, 2),
                           blurRadius: 4,
-                          color: Colors.black45,
+                          color: Colors.black38,
                         )
                       ],
                     ),
@@ -652,30 +653,27 @@ class _DisposalPageState extends State<DisposalPage> {
         ),
         centerTitle: true,
       ),
-        body: Stack(
+      body: Stack(
         children: [
+          // Evergreen gradient background
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('lib/assets/ease.jpg'),
-                  fit: BoxFit.cover,
+                gradient: LinearGradient(
+                  colors: [Color(0xFF0f9d58), Color(0xFF43e97b), Color(0xFF38f9d7), Colors.white],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  stops: [0.0, 0.4, 0.8, 1.0],
                 ),
               ),
+            ),
+          ),
+          // Soft glassmorphic overlay for eco effect
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
               child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white,
-                      Colors.white.withOpacity(0.9),
-                      Colors.white.withOpacity(0.7),
-                      Colors.transparent,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.0, 0.3, 0.6, 1.0],
-                  ),
-                ),
+                color: Colors.white.withOpacity(0.05),
               ),
             ),
           ),
@@ -686,63 +684,72 @@ class _DisposalPageState extends State<DisposalPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Section headers and cards
                   Row(
                     children: [
-                      Icon(FontAwesomeIcons.leaf, color: Colors.green[800], size: 28),
+                      Icon(FontAwesomeIcons.leaf, color: Color(0xFF0f9d58), size: 28),
                       SizedBox(width: 10),
                       Text("Why is this Important?",
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green[800])),
+                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0f9d58))),
                       IconButton(
-                        icon: Icon(Icons.volume_up, color: Colors.green[800], size: 28),
+                        icon: Icon(Icons.volume_up, color: Color(0xFF0f9d58), size: 28),
                         onPressed: () async {
-                          // Optionally configure language and pitch:
                           await flutterTts.setLanguage("en-US");
                           await flutterTts.setPitch(1.0);
-                          // Speak out the description text
                           await flutterTts.speak(description);
                         },
                       ),
                     ],
                   ),
                   SizedBox(height: 10),
-
-                  // Description with dynamic "Read More"
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final textSpan = TextSpan(
-                        text: description,
-                        style: TextStyle(fontSize: 16, color: Colors.grey[800]),
-                      );
-                      final textPainter = TextPainter(
-                        text: textSpan,
-                        maxLines: visibleLines,
-                        textDirection: TextDirection.ltr,
-                      )..layout(maxWidth: constraints.maxWidth);
-
-                      final isOverflowing = textPainter.didExceedMaxLines;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            description,
-                            style: TextStyle(fontSize: 16, color: Colors.grey[800]),
-                            maxLines: visibleLines,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (isOverflowing) // Show Read More button if text is overflowing
-                            TextButton(
-                              onPressed: showMore,
-                              child: Text(
-                                "Read More",
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[800]),
-                              ),
+                  // Description with glass card
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white.withOpacity(0.7),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.08),
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    padding: EdgeInsets.all(16),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final textSpan = TextSpan(
+                          text: description,
+                          style: TextStyle(fontSize: 16, color: Colors.grey[800]),
+                        );
+                        final textPainter = TextPainter(
+                          text: textSpan,
+                          maxLines: visibleLines,
+                          textDirection: TextDirection.ltr,
+                        )..layout(maxWidth: constraints.maxWidth);
+                        final isOverflowing = textPainter.didExceedMaxLines;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              description,
+                              style: TextStyle(fontSize: 16, color: Colors.grey[800]),
+                              maxLines: visibleLines,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                        ],
-                      );
-                    },
+                            if (isOverflowing)
+                              TextButton(
+                                onPressed: showMore,
+                                child: Text(
+                                  "Read More",
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0f9d58)),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
-
                   SizedBox(height: 20),
 
                   if (youtubeLinks.isNotEmpty) ...[

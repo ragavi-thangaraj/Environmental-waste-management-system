@@ -806,10 +806,15 @@ class HelpPage extends StatelessWidget {
                                                       child: Container(
                                                         width: 80,
                                                         height: 80,
-                                                        child: Image.network(
-                                                          result.get('image'),
-                                                          fit: BoxFit.cover,
-                                                        ),
+                                                        child: (result.data() as Map<String, dynamic>).containsKey('image') && result.get('image') != null && result.get('image').toString().isNotEmpty
+                                                            ? Image.network(
+                                                                result.get('image'),
+                                                                fit: BoxFit.cover,
+                                                              )
+                                                            : Container(
+                                                                color: Colors.grey[300],
+                                                                child: Icon(Icons.broken_image, size: 40, color: Colors.grey[600]),
+                                                              ),
                                                       ),
                                                     ),
                                                     const SizedBox(width: 16),

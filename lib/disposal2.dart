@@ -532,57 +532,28 @@ class _DisposalPageState extends State<DisposalPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green.shade900, Colors.green.shade500],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(40),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black38,
-                offset: Offset(0, 4),
-                blurRadius: 8,
-              ),
-            ],
-          ),
-          child: SafeArea(
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(FontAwesomeIcons.recycle, color: Colors.white, size: 30),
-                  SizedBox(width: 12),
-                  Text(
-                    "Disposal Measures",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      shadows: [
-                        Shadow(
-                          offset: Offset(2, 2),
-                          blurRadius: 4,
-                          color: Colors.black45,
-                        )
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
         centerTitle: true,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(FontAwesomeIcons.recycle, color: Colors.green[800], size: 30),
+            SizedBox(width: 12),
+            Text(
+              "Disposal Measures",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.green[800],
+              ),
+            ),
+          ],
+        ),
       ),
       body: Stack(
         children: [
+          // Restore original background: image with white overlay
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -592,19 +563,7 @@ class _DisposalPageState extends State<DisposalPage> {
                 ),
               ),
               child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white,
-                      Colors.white.withOpacity(0.9),
-                      Colors.white.withOpacity(0.7),
-                      Colors.transparent,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.0, 0.3, 0.6, 1.0],
-                  ),
-                ),
+                color: Colors.white.withOpacity(0.8),
               ),
             ),
           ),
@@ -615,276 +574,178 @@ class _DisposalPageState extends State<DisposalPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Restore simpler section headers and cards
                   Row(
                     children: [
                       Icon(FontAwesomeIcons.leaf, color: Colors.green[800], size: 28),
                       SizedBox(width: 10),
                       Text("Why is this Important?",
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green[800])),
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green[800])),
                       IconButton(
                         icon: Icon(Icons.volume_up, color: Colors.green[800], size: 28),
                         onPressed: () async {
-                          // Optionally configure language and pitch:
                           await flutterTts.setLanguage("en-US");
                           await flutterTts.setPitch(1.0);
-                          // Speak out the description text
                           await flutterTts.speak(description);
                         },
                       ),
                     ],
                   ),
                   SizedBox(height: 10),
-
-                  // Description with dynamic "Read More"
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final textSpan = TextSpan(
-                        text: description,
+                  // Restore simple description card
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: EdgeInsets.all(14),
+                      child: Text(
+                        description,
                         style: TextStyle(fontSize: 16, color: Colors.grey[800]),
-                      );
-                      final textPainter = TextPainter(
-                        text: textSpan,
-                        maxLines: visibleLines,
-                        textDirection: TextDirection.ltr,
-                      )..layout(maxWidth: constraints.maxWidth);
-
-                      final isOverflowing = textPainter.didExceedMaxLines;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            description,
-                            style: TextStyle(fontSize: 16, color: Colors.grey[800]),
-                            maxLines: visibleLines,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (isOverflowing) // Show Read More button if text is overflowing
-                            TextButton(
-                              onPressed: showMore,
-                              child: Text(
-                                "Read More",
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[800]),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
+                      ),
+                    ),
                   ),
-
                   SizedBox(height: 20),
 
+                  // Replace the Watch & Learn section with a more attractive card:
                   if (youtubeLinks.isNotEmpty) ...[
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header with title and icon
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: Row(
-                            children: [
-                              Icon(FontAwesomeIcons.youtube, color: Colors.redAccent, size: 30),
-                              const SizedBox(width: 12),
-                              Text(
-                                "Watch & Learn",
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.redAccent,
-                                  shadows: const [
-                                    Shadow(
-                                      blurRadius: 4,
-                                      color: Colors.black26,
-                                      offset: Offset(2, 2),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Glassmorphic video container with enhanced styling
-                        Container(
-                          height: 300,
-                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Card(
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                        child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(28),
                             gradient: LinearGradient(
-                              colors: [
-                                Colors.white.withOpacity(0.2),
-                                Colors.white.withOpacity(0.05),
-                              ],
+                              colors: [Color(0xFFe0ffe0), Color(0xFFb2f7ef), Colors.white],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                              width: 1.5,
+                              color: Colors.green.withOpacity(0.18),
+                              width: 2,
                             ),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 8,
-                                offset: Offset(2, 2),
-                              )
-                            ],
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(28),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                              child: Stack(
-                                children: [
-                                  // Video carousel using PageView.builder
-                                  PageView.builder(
-                                    controller: _pageController,
-                                    itemCount: youtubeLinks.length,
-                                    itemBuilder: (context, index) {
-                                      String videoId = YoutubePlayer.convertUrlToId(youtubeLinks[index])!;
-                                      return Padding(
-                                        padding: const EdgeInsets.all(12.0),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(24),
-                                          child: YoutubePlayer(
-                                            controller: YoutubePlayerController(
-                                              initialVideoId: videoId,
-                                              flags: const YoutubePlayerFlags(
-                                                autoPlay: false,
-                                                mute: false,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Playful header
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                child: Row(
+                                  children: [
+                                    Icon(FontAwesomeIcons.youtube, color: Colors.redAccent, size: 30),
+                                    const SizedBox(width: 14),
+                                    Text(
+                                      "Watch & Learn",
+                                      style: TextStyle(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green[900],
+                                        shadows: [
+                                          Shadow(
+                                            blurRadius: 4,
+                                            color: Colors.green.withOpacity(0.12),
+                                            offset: Offset(2, 2),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Video carousel
+                              Container(
+                                height: 300,
+                                margin: const EdgeInsets.symmetric(horizontal: 16),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(24),
+                                  color: Colors.white.withOpacity(0.7),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.green.withOpacity(0.08),
+                                      blurRadius: 10,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Stack(
+                                    children: [
+                                      PageView.builder(
+                                        controller: _pageController,
+                                        itemCount: youtubeLinks.length,
+                                        physics: PageScrollPhysics(),
+                                        itemBuilder: (context, index) {
+                                          String videoId = YoutubePlayer.convertUrlToId(youtubeLinks[index])!;
+                                          return Padding(
+                                            padding: const EdgeInsets.all(12.0),
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(20),
+                                              child: YoutubePlayer(
+                                                controller: YoutubePlayerController(
+                                                  initialVideoId: videoId,
+                                                  flags: const YoutubePlayerFlags(
+                                                    autoPlay: false,
+                                                    mute: false,
+                                                  ),
+                                                ),
+                                                showVideoProgressIndicator: true,
+                                                progressIndicatorColor: Colors.redAccent,
                                               ),
                                             ),
-                                            showVideoProgressIndicator: true,
-                                            progressIndicatorColor: Colors.redAccent,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    onPageChanged: (index) {
-                                      setState(() {
-                                        _currentPage = index;
-                                      });
-                                    },
-                                  ),
-                                  // Animated page indicator at the bottom center
-                                  Positioned(
-                                    bottom: 20,
-                                    left: 0,
-                                    right: 0,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: List.generate(youtubeLinks.length, (index) {
-                                        return AnimatedContainer(
-                                          duration: const Duration(milliseconds: 300),
-                                          margin: const EdgeInsets.symmetric(horizontal: 5),
-                                          width: _currentPage == index ? 14 : 10,
-                                          height: _currentPage == index ? 14 : 10,
-                                          decoration: BoxDecoration(
-                                            color: _currentPage == index ? Colors.redAccent : Colors.white70,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        );
-                                      }),
-                                    ),
-                                  ),
-                                  // Header overlay with a title
-                                  Positioned(
-                                    top: 0,
-                                    left: 0,
-                                    right: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.black.withOpacity(0.6),
-                                            Colors.transparent,
-                                          ],
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                        ),
-                                        borderRadius: const BorderRadius.only(
-                                          topLeft: Radius.circular(28),
-                                          topRight: Radius.circular(28),
+                                          );
+                                        },
+                                        onPageChanged: (index) {
+                                          setState(() {
+                                            _currentPage = index;
+                                          });
+                                        },
+                                      ),
+                                      // Visually engaging page indicator
+                                      Positioned(
+                                        bottom: 18,
+                                        left: 0,
+                                        right: 0,
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: List.generate(youtubeLinks.length, (index) {
+                                            return AnimatedContainer(
+                                              duration: const Duration(milliseconds: 300),
+                                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                                              width: _currentPage == index ? 18 : 10,
+                                              height: _currentPage == index ? 18 : 10,
+                                              decoration: BoxDecoration(
+                                                color: _currentPage == index ? Colors.green[700] : Colors.green[200],
+                                                border: Border.all(
+                                                  color: _currentPage == index ? Colors.green[900]! : Colors.green[200]!,
+                                                  width: 2,
+                                                ),
+                                                shape: BoxShape.circle,
+                                                boxShadow: _currentPage == index
+                                                    ? [
+                                                        BoxShadow(
+                                                          color: Colors.green.withOpacity(0.2),
+                                                          blurRadius: 6,
+                                                          offset: Offset(0, 2),
+                                                        ),
+                                                      ]
+                                                    : [],
+                                              ),
+                                            );
+                                          }),
                                         ),
                                       ),
-                                      child: const Text(
-                                        "Featured Videos",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        // Buttons row with improved padding and elevation
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  toggleTasks(); // This should show the tasks section
-                                  Future.delayed(const Duration(milliseconds: 300), () {
-                                    _scrollController.animateTo(
-                                      _scrollController.position.maxScrollExtent,
-                                      duration: const Duration(milliseconds: 600),
-                                      curve: Curves.easeInOut,
-                                    );
-                                  });
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green[800],
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                  elevation: 8,
                                 ),
-                                icon: const Icon(Icons.cleaning_services, size: 28),
-                                label: const Text("Clean", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                               ),
-                              ElevatedButton.icon(
-                                onPressed: () async {
-                                  Position userPosition = await _getUserLocation();
-                                  Map<String, dynamic>? nearestOfficer = await _findNearestMunicipalOfficer(userPosition);
-
-                                  if (nearestOfficer != null) {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => HelpPage(
-                                          nearestOfficer: nearestOfficer,
-                                          image: widget.image,
-                                          text: description,
-                                          category: description,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange[800],
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                  elevation: 8,
-                                ),
-                                icon: const Icon(Icons.help_outline, size: 28),
-                                label: const Text("Help", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                              ),
+                              const SizedBox(height: 20),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
-                      ],
+                      ),
                     ),
                   ],
 

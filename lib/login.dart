@@ -11,12 +11,13 @@ class LoginApp extends StatefulWidget {
 
 class _LoginAppState extends State<LoginApp> {
   bool isLoading = false;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   Future<void> signInWithGoogle() async {
     setState(() => isLoading = true); // Show loading
 
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         setState(() => isLoading = false);
         return;
@@ -24,8 +25,9 @@ class _LoginAppState extends State<LoginApp> {
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
+        // accessToken is optional and may not be available in new API
+        accessToken: googleAuth.accessToken,
       );
 
       UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);

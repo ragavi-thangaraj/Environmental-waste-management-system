@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'image_result_page.dart';
+import 'package:image/image.dart' as img;
+import 'dart:typed_data';
 
 class WellnessPage extends StatefulWidget {
   @override
@@ -158,6 +160,9 @@ class _WellnessPageState extends State<WellnessPage> {
   Future<void> _fetchImageDescription(File image) async {
     setState(() => _isLoading = true);
 
+    // Compress the image before sending
+    File compressedImage = await _compressImage(image);
+
     String? apiKey = await _fetchAPIKey();
     if (apiKey == null) {
       setState(() => _isLoading = false);
@@ -168,7 +173,7 @@ class _WellnessPageState extends State<WellnessPage> {
     var url = Uri.parse("https://label-image.p.rapidapi.com/detect-label");
     var request = http.MultipartRequest("POST", url)
       ..headers["X-RapidAPI-Key"] = apiKey
-      ..files.add(await http.MultipartFile.fromPath("image", image.path));
+      ..files.add(await http.MultipartFile.fromPath("image", compressedImage.path));
 
     try {
       var response = await request.send();
@@ -177,20 +182,24 @@ class _WellnessPageState extends State<WellnessPage> {
       if (response.statusCode == 200) {
         print("API Response: $responseBody");
         var data = jsonDecode(responseBody);
-        List<dynamic> labelsList = data["body"]["labels"];
+        List<dynamic>? labelsList = data["body"]?["labels"];
+        if (labelsList == null || labelsList.isEmpty) {
+          setState(() {
+            _isLoading = false;
+          });
+          _showUserMessage("No labels found for this image. Try another image!");
+          return;
+        }
         List<String> extractedLabels =
-        labelsList.map((label) => label["description"].toString()).toList();
-
+          labelsList.map((label) => label["description"].toString()).toList();
         Map<String, dynamic> formattedApiResponse = {
           "body": {
             "labels": extractedLabels
           }
         };
-
         setState(() {
           _isLoading = false; // Ensure UI updates correctly
         });
-
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -206,6 +215,21 @@ class _WellnessPageState extends State<WellnessPage> {
       _showUserMessage("This may take a while. Please try again later.");
       print("Error: $e");
     }
+  }
+
+  // Compress image to max 800x800 and save to temp file
+  Future<File> _compressImage(File file) async {
+    Uint8List bytes = await file.readAsBytes();
+    img.Image? image = img.decodeImage(bytes);
+    if (image == null) return file;
+    // Resize if needed
+    img.Image resized = img.copyResize(image, width: 800, height: 800, interpolation: img.Interpolation.average);
+    // Encode as JPEG with quality 85
+    List<int> jpg = img.encodeJpg(resized, quality: 85);
+    // Save to temp file
+    String tempPath = file.path.replaceFirst('.jpg', '_compressed.jpg').replaceFirst('.png', '_compressed.jpg');
+    File compressed = await File(tempPath).writeAsBytes(jpg);
+    return compressed;
   }
 
   void _showUserMessage(String message) {

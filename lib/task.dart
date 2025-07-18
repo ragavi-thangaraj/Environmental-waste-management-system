@@ -1,1434 +1,659 @@
-import 'dart:async';
-
-import 'package:ease/task2.dart';
-import 'package:ease/task3.dart';
-import 'package:ease/task4.dart';
-import 'package:ease/task5.dart';
-import 'package:ease/task6.dart';
-import 'package:ease/task7.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:geolocator/geolocator.dart';
-import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lottie/lottie.dart';
 import 'dart:convert';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:confetti/confetti.dart';
+import 'task_games/ocean_cleanup_game.dart';
+import 'task_games/recycling_sort_game.dart';
+import 'task_games/plant_garden_game.dart';
+import 'task_games/energy_saver_game.dart';
+import 'task_games/water_conservation_game.dart';
+import 'task_games/eco_craft_game.dart';
 
-class Task {
-  final int level;
-  bool isUnlocked;
-  bool isCompleted;
-  Task({required this.level, this.isUnlocked = false, this.isCompleted = false});
-}
 class TaskPage extends StatefulWidget {
-  const TaskPage({Key? key}) : super(key: key);
   @override
   _TaskPageState createState() => _TaskPageState();
 }
-class _TaskPageState extends State<TaskPage>
-    with SingleTickerProviderStateMixin {
-  // Example: 10 tasks
-  List<Task> tasks = List.generate(
-    10,
-        (index) => Task(level: index + 1),
-  );
 
-  StreamSubscription? _verifySubscription;
-  late AnimationController _bgAnimationController;
-  final ConfettiController _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
+  late AnimationController _backgroundController;
+  late AnimationController _cardController;
+  late ConfettiController _confettiController;
+  
+  List<TaskLevel> taskLevels = [];
+  int currentUnlockedLevel = 0;
 
   @override
   void initState() {
     super.initState();
-    _updateUnlockedLevels(); // Initial Firestore check.
-    _verifySubscription = FirebaseFirestore.instance
-        .collection('verify')
-        .snapshots()
-        .listen((_) => _updateUnlockedLevels());
+    _initializeAnimations();
+    _initializeTasks();
+    _loadProgress();
+  }
 
-    // Animate background gradient
-    _bgAnimationController = AnimationController(
-      duration: const Duration(seconds: 8),
+  void _initializeAnimations() {
+    _backgroundController = AnimationController(
+      duration: Duration(seconds: 20),
       vsync: this,
-    )..repeat(reverse: true);
+    )..repeat();
+    
+    _cardController = AnimationController(
+      duration: Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _confettiController = ConfettiController(duration: Duration(seconds: 3));
+    
+    _cardController.forward();
+  }
+
+  void _initializeTasks() {
+    taskLevels = [
+      TaskLevel(
+        id: 1,
+        title: "Ocean Hero",
+        subtitle: "Save marine life by cleaning the ocean",
+        description: "Help sea creatures by removing plastic waste from the ocean. Learn about marine pollution!",
+        icon: "🌊",
+        color: Colors.blue,
+        difficulty: "Easy",
+        estimatedTime: "5 min",
+        gameWidget: OceanCleanupGame(),
+        isUnlocked: true,
+      ),
+      TaskLevel(
+        id: 2,
+        title: "Sorting Champion",
+        subtitle: "Master the art of waste separation",
+        description: "Sort different types of waste into correct bins. Become a recycling expert!",
+        icon: "♻️",
+        color: Colors.green,
+        difficulty: "Easy",
+        estimatedTime: "3 min",
+        gameWidget: RecyclingSortGame(),
+        isUnlocked: false,
+      ),
+      TaskLevel(
+        id: 3,
+        title: "Garden Guardian",
+        subtitle: "Create your own green paradise",
+        description: "Plant seeds, water them, and watch your garden grow. Learn about plant care!",
+        icon: "🌱",
+        color: Colors.lightGreen,
+        difficulty: "Medium",
+        estimatedTime: "7 min",
+        gameWidget: PlantGardenGame(),
+        isUnlocked: false,
+      ),
+      TaskLevel(
+        id: 4,
+        title: "Energy Detective",
+        subtitle: "Find and fix energy waste",
+        description: "Explore a house and turn off wasteful appliances. Save energy, save the planet!",
+        icon: "⚡",
+        color: Colors.amber,
+        difficulty: "Medium",
+        estimatedTime: "6 min",
+        gameWidget: EnergySaverGame(),
+        isUnlocked: false,
+      ),
+      TaskLevel(
+        id: 5,
+        title: "Water Wizard",
+        subtitle: "Protect our precious water resources",
+        description: "Fix leaky pipes and save water drops. Every drop counts!",
+        icon: "💧",
+        color: Colors.cyan,
+        difficulty: "Medium",
+        estimatedTime: "5 min",
+        gameWidget: WaterConservationGame(),
+        isUnlocked: false,
+      ),
+      TaskLevel(
+        id: 6,
+        title: "Eco Artist",
+        subtitle: "Turn trash into treasure",
+        description: "Create beautiful art from recycled materials. Be creative and eco-friendly!",
+        icon: "🎨",
+        color: Colors.purple,
+        difficulty: "Hard",
+        estimatedTime: "10 min",
+        gameWidget: EcoCraftGame(),
+        isUnlocked: false,
+      ),
+    ];
+  }
+
+  Future<void> _loadProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    final progressData = prefs.getString('task_progress');
+    if (progressData != null) {
+      final Map<String, dynamic> progress = json.decode(progressData);
+      setState(() {
+        currentUnlockedLevel = progress['unlockedLevel'] ?? 0;
+        for (int i = 0; i <= currentUnlockedLevel && i < taskLevels.length; i++) {
+          taskLevels[i].isUnlocked = true;
+          if (progress['completedTasks'] != null) {
+            taskLevels[i].isCompleted = progress['completedTasks'].contains(i + 1);
+          }
+        }
+      });
+    }
+  }
+
+  Future<void> _saveProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    final completedTasks = taskLevels
+        .where((task) => task.isCompleted)
+        .map((task) => task.id)
+        .toList();
+    
+    final progressData = {
+      'unlockedLevel': currentUnlockedLevel,
+      'completedTasks': completedTasks,
+    };
+    
+    await prefs.setString('task_progress', json.encode(progressData));
+  }
+
+  void _completeTask(int taskId) {
+    setState(() {
+      final taskIndex = taskLevels.indexWhere((task) => task.id == taskId);
+      if (taskIndex != -1) {
+        taskLevels[taskIndex].isCompleted = true;
+        
+        // Unlock next level
+        if (taskIndex + 1 < taskLevels.length && currentUnlockedLevel == taskIndex) {
+          currentUnlockedLevel = taskIndex + 1;
+          taskLevels[taskIndex + 1].isUnlocked = true;
+          _confettiController.play();
+        }
+      }
+    });
+    _saveProgress();
   }
 
   @override
   void dispose() {
-    _verifySubscription?.cancel();
-    _bgAnimationController.dispose();
+    _backgroundController.dispose();
+    _cardController.dispose();
     _confettiController.dispose();
     super.dispose();
   }
 
-  /// Fetches tasks from Firestore and unlocks levels dynamically.
-  Future<void> _updateUnlockedLevels() async {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('verify')
-        .where('userId',isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-        .where('status', isEqualTo: 'Confirmed')
-        .get();
-
-    int maxConfirmedLevel = 0;
-    for (var doc in snapshot.docs) {
-      int docLevel = (doc['level'] as num?)?.toInt() ?? 0;
-      if (docLevel > maxConfirmedLevel) {
-        maxConfirmedLevel = docLevel;
-      }
-    }
-
-    setState(() {
-      for (var task in tasks) {
-        if (task.level <= maxConfirmedLevel) {
-          // Completed levels.
-          task.isUnlocked = true;
-          task.isCompleted = true;
-        } else if (task.level == maxConfirmedLevel + 1) {
-          // Next level unlocked.
-          task.isUnlocked = true;
-          task.isCompleted = false;
-        } else {
-          task.isUnlocked = false;
-          task.isCompleted = false;
-        }
-      }
-    });
-  }
-
-  Future<void> _onLevelSelected(int level) async {
-    Task selectedTask = tasks.firstWhere((task) => task.level == level);
-    if (!selectedTask.isUnlocked) {
-      _showLockedLevelDialog();
-      return;
-    }
-
-    // Show a loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
-
-    // Simulate delay
-    await Future.delayed(const Duration(seconds: 1));
-    Navigator.pop(context);
-
-    PageRouteBuilder? route;
-
-    if (level == 6) {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("User not logged in.")),
-        );
-        return;
-      }
-
-      // Check if a submission for level 3 already exists.
-      final submissionSnapshot = await FirebaseFirestore.instance
-          .collection("verify")
-          .where("userId", isEqualTo: currentUser.uid)
-          .where("level", isEqualTo: 1)
-          .get();
-
-      if (submissionSnapshot.docs.isNotEmpty) {
-        final doc = submissionSnapshot.docs.first;
-        final status = doc.data()["status"];
-        if (status == "Not Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildReviewDialogContent(context),
-            ),
-          );
-          return;
-        } else if (status == "Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildCustomConfirmationDialog(context),
-            ),
-          );
-          return;
-        }
-      } else {
-        route = PageRouteBuilder(
-          pageBuilder: (_, __, ___) => TrashCollectGame(),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
-          transitionDuration: const Duration(milliseconds: 500),
-        );
-      }
-    } else if (level == 5) {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("User not logged in.")),
-        );
-        return;
-      }
-
-      // Check if a submission for level 3 already exists.
-      final submissionSnapshot = await FirebaseFirestore.instance
-          .collection("verify")
-          .where("userId", isEqualTo: currentUser.uid)
-          .where("level", isEqualTo: 5)
-          .get();
-
-      if (submissionSnapshot.docs.isNotEmpty) {
-        final doc = submissionSnapshot.docs.first;
-        final status = doc.data()["status"];
-        if (status == "Not Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildReviewDialogContent(context),
-            ),
-          );
-          return;
-        } else if (status == "Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildCustomConfirmationDialog(context),
-            ),
-          );
-          return;
-        }
-      } else {
-        route = PageRouteBuilder(
-          pageBuilder: (_, __, ___) => TrashCollectGame(),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
-          transitionDuration: const Duration(milliseconds: 500),
-        );
-      }
-    } else if (level == 3) {
-      // Get the current user.
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("User not logged in.")),
-        );
-        return;
-      }
-
-      // Check if a submission for level 3 already exists.
-      final submissionSnapshot = await FirebaseFirestore.instance
-          .collection("verify")
-          .where("userId", isEqualTo: currentUser.uid)
-          .where("level", isEqualTo: 3)
-          .get();
-
-      if (submissionSnapshot.docs.isNotEmpty) {
-        final doc = submissionSnapshot.docs.first;
-        final status = doc.data()["status"];
-        if (status == "Not Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildReviewDialogContent(context),
-            ),
-          );
-          return;
-        } else if (status == "Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildCustomConfirmationDialog(context),
-            ),
-          );
-          return;
-        }
-      } else {
-        // No previous submission: navigate to the Mini Garden task screen.
-        route = PageRouteBuilder(
-          pageBuilder: (_, __, ___) => MiniGardenTaskScreen(),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
-          transitionDuration: const Duration(milliseconds: 500),
-        );
-      }
-    } else if (level == 4) {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("User not logged in.")),
-        );
-        return;
-      }
-
-      // Check if a submission for level 3 already exists.
-      final submissionSnapshot = await FirebaseFirestore.instance
-          .collection("verify")
-          .where("userId", isEqualTo: currentUser.uid)
-          .where("level", isEqualTo: 4)
-          .get();
-
-      if (submissionSnapshot.docs.isNotEmpty) {
-        final doc = submissionSnapshot.docs.first;
-        final status = doc.data()["status"];
-        if (status == "Not Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildReviewDialogContent(context),
-            ),
-          );
-          return;
-        } else if (status == "Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildCustomConfirmationDialog(context),
-            ),
-          );
-          return;
-        }
-      }
-      // Navigate to the Recycling Sorting Game screen.
-      else {
-      route = PageRouteBuilder(
-        pageBuilder: (_, __, ___) => TrashCollectGame(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 500),
-      );
-    }
-    }
-    else if (level == 2) {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("User not logged in.")),
-        );
-        return;
-      }
-
-      // Check existing submission in 'verify' collection
-      final submissionSnapshot = await FirebaseFirestore.instance
-          .collection("verify")
-          .where("userId", isEqualTo: currentUser.uid)
-          .where("level", isEqualTo: 2)
-          .get();
-
-      if (submissionSnapshot.docs.isNotEmpty) {
-        final doc = submissionSnapshot.docs.first;
-        final status = doc.data()["status"];
-
-        if (status == "Not Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildReviewDialogContent(context),
-            ),
-          );
-          return;
-        } else if (status == "Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildCustomConfirmationDialog(context),
-            ),
-          );
-          return;
-        }
-      }
-
-      // ✅ Open EcoFriendlyArtScreen directly without extra function call
-      route = PageRouteBuilder(
-        pageBuilder: (_, __, ___) => TrashCollectGame(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 500),
-      );
-    }
-    else if (level == 7)
-    {
-        final currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("User not logged in.")),
-          );
-          return;
-        }
-
-        // Check if a submission for level 3 already exists.
-        final submissionSnapshot = await FirebaseFirestore.instance
-            .collection("verify")
-            .where("userId", isEqualTo: currentUser.uid)
-            .where("level", isEqualTo: 7)
-            .get();
-
-        if (submissionSnapshot.docs.isNotEmpty) {
-          final doc = submissionSnapshot.docs.first;
-          final status = doc.data()["status"];
-          if (status == "Not Confirmed") {
-            showDialog(
-              context: context,
-              builder: (context) => Dialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                child: _buildReviewDialogContent(context),
-              ),
-            );
-            return;
-          } else if (status == "Confirmed") {
-            showDialog(
-              context: context,
-              builder: (context) => Dialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                child: _buildCustomConfirmationDialog(context),
-              ),
-            );
-            return;
-          }
-        } else {
-          route = PageRouteBuilder(
-            pageBuilder: (_, __, ___) => BeachCleanupGame(),
-            transitionsBuilder: (_, animation, __, child) =>
-                FadeTransition(opacity: animation, child: child),
-            transitionDuration: const Duration(milliseconds: 500),
-          );
-        }
-      }
-    else if (level == 1) {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("User not logged in.")),
-        );
-        return;
-      }
-
-      // Check existing submission in 'verify' collection
-      final submissionSnapshot = await FirebaseFirestore.instance
-          .collection("verify")
-          .where("userId", isEqualTo: currentUser.uid)
-          .where("level", isEqualTo: 1)
-          .get();
-
-      if (submissionSnapshot.docs.isNotEmpty) {
-        final doc = submissionSnapshot.docs.first;
-        final status = doc.data()["status"];
-
-        if (status == "Not Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildReviewDialogContent(context),
-            ),
-          );
-          return;
-        } else if (status == "Confirmed") {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              child: _buildCustomConfirmationDialog(context),
-            ),
-          );
-          return;
-        }
-      }
-
-      // ✅ Open EcoFriendlyArtScreen directly without extra function call
-      route = PageRouteBuilder(
-        pageBuilder: (_, __, ___) => RecyclingSortingGameScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 500),
-      );
-    }
-    else {
-      // For future levels (other than 1, 2, 3, or 4)
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Level $level selected - coming soon.")),
-      );
-      return;
-    }
-
-    // Only push the route if it has been assigned.
-    if (route != null) {
-      _confettiController.play(); // Play confetti on navigation
-      Navigator.push(context, route);
-    }
-  }
-
-  Widget _buildReviewDialogContent(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        image: DecorationImage(
-          image: AssetImage("lib/assets/ease.jpg"),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.white.withOpacity(0.4),
-            BlendMode.dstATop,
-          ),
-        ),
-        gradient: LinearGradient(
-          colors: [Colors.green.shade50, Colors.green.shade200],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.hourglass_top,
-            size: 80,
-            color: Colors.green.shade700,
-          ),
-          SizedBox(height: 10),
-          Text(
-            "Submission Under Review",
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.green.shade900,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 10),
-          Text(
-            "Your Mini Garden task submission is currently under verification. Please check back later for confirmation.",
-            style: TextStyle(
-              fontSize: 16,
-              fontStyle: FontStyle.italic,
-              color: Colors.green.shade800,
-              fontWeight: FontWeight.bold
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade700,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-            ),
-            child: Text(
-              "OK",
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  Widget _buildCustomConfirmationDialog(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        // Background image with a white fading effect.
-        image: DecorationImage(
-          image: AssetImage("lib/assets/ease.jpg"),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.white.withOpacity(0.6),
-            BlendMode.dstATop,
-          ),
-        ),
-        // A subtle green gradient overlay.
-        gradient: LinearGradient(
-          colors: [Colors.green.shade50, Colors.green.shade100],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            "Task Confirmed!",
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.green.shade900,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 10),
-          Text(
-            "Thank you for being a part of keeping our environment tidy and clean. Your points have been added to your piggy bank. Enjoy your day!",
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.green.shade800,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade700,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-            ),
-            child: Text(
-              "OK",
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  void _showLockedLevelDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Level Locked"),
-        content: const Text("Complete previous levels to unlock this one."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Main build method with animated background.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // Gradient background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF2A7B9B), Color(0xFF6DD5ED)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-          // Wavy header with globe animation
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: ClipPath(
-              clipper: _WavyHeaderClipper(),
-              child: Container(
-                height: 220,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF2A7B9B), Color(0xFF6DD5ED)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    Align(
-                      alignment: Alignment.bottomLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 32, bottom: 16),
-                        child: Image.asset(
-                          'lib/assets/happy_earth.gif',
-                          height: 100,
-                        ),
-                      ),
-                    ),
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 60.0),
-                        child: Text(
-                          'Green Adventure!',
-                          style: GoogleFonts.baloo2(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black26,
-                                blurRadius: 8,
-                                offset: Offset(2, 2),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Confetti effect
+          // Animated Background
+          _buildAnimatedBackground(),
+          
+          // Confetti
           Align(
             alignment: Alignment.topCenter,
             child: ConfettiWidget(
               confettiController: _confettiController,
               blastDirectionality: BlastDirectionality.explosive,
               shouldLoop: false,
-              colors: [
-                Color(0xFF2A7B9B),
-                Color(0xFF6DD5ED),
-                Colors.yellow,
-                Colors.pink,
-                Colors.orange,
-              ],
-              numberOfParticles: 30,
-              maxBlastForce: 20,
-              minBlastForce: 8,
-              emissionFrequency: 0.05,
-              gravity: 0.2,
+              colors: [Colors.green, Colors.blue, Colors.orange, Colors.pink],
             ),
           ),
-          // Main content: Candy Crush style vertical path
+          
+          // Main Content
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 180.0, left: 0, right: 0),
-              child: _CandyCrushPath(
-                tasks: tasks,
-                onLevelSelected: _onLevelSelected,
-              ),
+            child: Column(
+              children: [
+                _buildHeader(),
+                _buildProgressIndicator(),
+                Expanded(child: _buildTaskList()),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-}
 
-// Wavy header clipper
-class _WavyHeaderClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    Path path = Path();
-    path.lineTo(0, size.height - 60);
-    path.quadraticBezierTo(size.width / 2, size.height, size.width, size.height - 60);
-    path.lineTo(size.width, 0);
-    path.close();
-    return path;
-  }
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
-}
-
-// Candy Crush style vertical path widget
-class _CandyCrushPath extends StatelessWidget {
-  final List<Task> tasks;
-  final Function(int) onLevelSelected;
-  const _CandyCrushPath({required this.tasks, required this.onLevelSelected});
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      itemCount: tasks.length,
-      itemBuilder: (context, i) {
-        final task = tasks[i];
-        final isUnlocked = task.isUnlocked;
-        final isCompleted = task.isCompleted;
-        return Column(
-          children: [
-            GestureDetector(
-              onTap: isUnlocked ? () => onLevelSelected(task.level) : null,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Candy path connector
-                  if (i > 0)
-                    Positioned(
-                      top: -40,
-                      child: Container(
-                        width: 8,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              isUnlocked ? Color(0xFF2A7B9B) : Colors.grey.shade400,
-                              isUnlocked ? Color(0xFF6DD5ED) : Colors.grey.shade200,
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ),
-                  // Candy node
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeOutBack,
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: isUnlocked
-                            ? [Color(0xFF2A7B9B), Color(0xFF6DD5ED)]
-                            : [Colors.grey.shade300, Colors.grey.shade500],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isUnlocked ? Color(0xFF2A7B9B).withOpacity(0.3) : Colors.black12,
-                          blurRadius: 12,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
-                      border: Border.all(
-                        color: isCompleted ? Colors.amber : Colors.white,
-                        width: isCompleted ? 4 : 2,
-                      ),
-                    ),
-                    child: Center(
-                      child: isCompleted
-                          ? Icon(Icons.star, color: Colors.amber, size: 40)
-                          : isUnlocked
-                              ? Icon(Icons.cake, color: Colors.white, size: 40)
-                              : Icon(Icons.lock, color: Colors.white, size: 36),
-                    ),
-                  ),
-                  // Level number
-                  Positioned(
-                    bottom: 10,
-                    child: Text(
-                      'Level ${task.level}',
-                      style: GoogleFonts.baloo2(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isUnlocked ? Color(0xFF2A7B9B) : Colors.grey.shade600,
-                        shadows: [
-                          Shadow(
-                            color: Colors.white,
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// Animated Premium App Bar with an animated title.
-class PremiumAppBar extends StatelessWidget {
-  const PremiumAppBar({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildAnimatedBackground() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.green.shade500, Colors.lightGreen.shade900],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF4CAF50).withOpacity(0.1),
+            Color(0xFF2196F3).withOpacity(0.1),
+            Color(0xFFFFEB3B).withOpacity(0.1),
+          ],
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
       ),
-      child: Row(
+      child: AnimatedBuilder(
+        animation: _backgroundController,
+        builder: (context, child) {
+          return CustomPaint(
+            painter: FloatingElementsPainter(_backgroundController.value),
+            size: Size.infinite,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: EdgeInsets.all(20),
+      child: Column(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.green[800]),
+                onPressed: () => Navigator.pop(context),
+              ),
+              Expanded(
+                child: Text(
+                  "🌍 Eco Adventures",
+            style: TextStyle(
+                    fontSize: 28,
+              fontWeight: FontWeight.bold,
+                    color: Colors.green[800],
+            ),
+            textAlign: TextAlign.center,
           ),
-          Expanded(
-            child: Center(
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.8, end: 1.0),
-                duration: const Duration(milliseconds: 800),
-                curve: Curves.easeOutBack,
-                builder: (context, scale, child) {
-                  return Transform.scale(scale: scale, child: child);
-                },
-                child: const Text(
-                  'Green Journey',
-                  style: TextStyle(
-                    fontSize: 26,
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.orange,
+                  borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+                  "Level ${currentUnlockedLevel + 1}",
+              style: TextStyle(
+                color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 1.2,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black26,
-                        blurRadius: 2,
-                        offset: Offset(1, 1),
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ),
           ),
-          const SizedBox(width: 48),
+        ],
+      ),
+          SizedBox(height: 10),
+          Text(
+            "Complete missions to unlock new adventures!",
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
         ],
       ),
     );
   }
-}
 
-class NeighborhoodLitterPatrolScreen extends StatefulWidget {
-  @override
-  _NeighborhoodLitterPatrolScreenState createState() => _NeighborhoodLitterPatrolScreenState();
-}
-
-class _NeighborhoodLitterPatrolScreenState extends State<NeighborhoodLitterPatrolScreen> {
-  File? beforePhoto;
-  File? afterPhoto;
-  bool taskCompleted = false;
-  bool isVerifying = false; // flag to display the waiting note
-  final ImagePicker _picker = ImagePicker();
-
-  // Variables to store location data for each photo.
-  Position? beforePhotoPosition;
-  Position? afterPhotoPosition;
-
-  // Holds the verified record (if any) from Firestore.
-  Map<String, dynamic>? _verificationRecord;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkVerificationStatus();
-  }
-
-  /// Query Firestore to see if a document exists with the current userId,
-  /// level 1 and status as "Confirmed".
-  Future<void> _checkVerificationStatus() async {
-    try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('verify')
-          .where('userId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-          .where('status', isEqualTo: 'Confirmed')
-          .where('level', isEqualTo: 1)
-          .limit(1)
-          .get();
-      if (querySnapshot.docs.isNotEmpty) {
-        setState(() {
-          _verificationRecord = querySnapshot.docs.first.data() as Map<String, dynamic>;
-        });
-      }
-    } catch (e) {
-      print('Error checking verification status: $e');
-    }
-  }
-
-  /// Capture the current location.
-  Future<Position> _getCurrentLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      throw Exception('Location services are disabled.');
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        throw Exception('Location permissions are denied');
-      }
-    }
-    if (permission == LocationPermission.deniedForever) {
-      throw Exception('Location permissions are permanently denied.');
-    }
-
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-  }
-
-  /// Capture photo using camera and also store location data.
-  Future<void> _capturePhoto(bool isBefore) async {
-    try {
-      final XFile? photo = await _picker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 80,
-      );
-      if (photo != null) {
-        Position currentPosition = await _getCurrentLocation();
-
-        setState(() {
-          if (isBefore) {
-            beforePhoto = File(photo.path);
-            beforePhotoPosition = currentPosition;
-          } else {
-            afterPhoto = File(photo.path);
-            afterPhotoPosition = currentPosition;
-          }
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
-    }
-  }
-
-  /// Verify that both photos (and their locations) exist, convert them to Base64,
-  /// and store the data in Firestore under the "verify" collection.
-  Future<void> _verifyAndMarkComplete() async {
-    if (beforePhoto == null ||
-        afterPhoto == null ||
-        beforePhotoPosition == null ||
-        afterPhotoPosition == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please capture both before and after photos with location data.')),
-      );
-      return;
-    }
-
-    setState(() {
-      isVerifying = true;
-    });
-
-    try {
-      final beforeBytes = await beforePhoto!.readAsBytes();
-      final afterBytes = await afterPhoto!.readAsBytes();
-      final String beforePhotoBase64 = base64Encode(beforeBytes);
-      final String afterPhotoBase64 = base64Encode(afterBytes);
-
-      Map<String, dynamic> verifyData = {
-        'level': 1,
-        'userId': FirebaseAuth.instance.currentUser!.uid,
-        // Optionally add additional user details:
-        'beforePhoto': beforePhotoBase64,
-        'afterPhoto': afterPhotoBase64,
-        'beforePhotoLatitude': beforePhotoPosition!.latitude,
-        'beforePhotoLongitude': beforePhotoPosition!.longitude,
-        'afterPhotoLatitude': afterPhotoPosition!.latitude,
-        'afterPhotoLongitude': afterPhotoPosition!.longitude,
-        'status': 'Not Confirmed',
-        'points': 0,
-        'completedAt': DateTime.now(),
-      };
-
-      await FirebaseFirestore.instance.collection('verify').add(verifyData);
-
-      setState(() {
-        taskCompleted = true;
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving progress: ${e.toString()}')),
-      );
-    } finally {
-      setState(() {
-        isVerifying = false;
-      });
-    }
-  }
-
-  Widget _buildPhotoSection(String label, File? photo, bool isBefore) {
-    if (_verificationRecord != null) {
-      // Retrieve Base64 image and location data from the verified record.
-      String base64Str = isBefore ? _verificationRecord!['beforePhoto'] : _verificationRecord!['afterPhoto'];
-      var imageBytes = base64Decode(base64Str);
-      double latitude = isBefore ? _verificationRecord!['beforePhotoLatitude'] : _verificationRecord!['afterPhotoLatitude'];
-      double longitude = isBefore ? _verificationRecord!['beforePhotoLongitude'] : _verificationRecord!['afterPhotoLongitude'];
-
-      return Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.symmetric(vertical: 8),
-        color: Colors.white.withOpacity(0.9),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[800])),
-              SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.memory(
-                  imageBytes,
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  'Location: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[800]),
+  Widget _buildProgressIndicator() {
+    final completedTasks = taskLevels.where((task) => task.isCompleted).length;
+    final progress = completedTasks / taskLevels.length;
+    
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+                "Progress",
+            style: TextStyle(
+                  fontSize: 18,
+              fontWeight: FontWeight.bold,
+                  color: Colors.green[800],
+            ),
+          ),
+          Text(
+                "$completedTasks/${taskLevels.length} completed",
+            style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
                 ),
               ),
             ],
           ),
-        ),
-      );
-    }
-
-    // Original functionality for capturing photos.
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: EdgeInsets.symmetric(vertical: 8),
-      color: Colors.white.withOpacity(0.9),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[800])),
-            SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: photo != null
-                  ? Image.file(
-                photo,
-                width: double.infinity,
-                height: 200,
-                fit: BoxFit.cover,
-              )
-                  : Container(
-                width: double.infinity,
-                height: 200,
-                color: Colors.grey[300],
-                child: Icon(Icons.camera_alt, size: 50, color: Colors.grey[700]),
-              ),
+          SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.grey[300],
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+              minHeight: 8,
             ),
-            SizedBox(height: 8),
-            // Show capture button only if photo is not yet captured.
-            if (photo == null)
-              Center(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[700],
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: () => _capturePhoto(isBefore),
-                  icon: Icon(Icons.camera, color: Colors.white),
-                  label: Text(
-                    isBefore ? 'Capture Before Photo' : 'Capture After Photo',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskList() {
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(horizontal: 20),
+      itemCount: taskLevels.length,
+      itemBuilder: (context, index) {
+        return AnimatedBuilder(
+          animation: _cardController,
+          builder: (context, child) {
+            final delay = index * 0.1;
+            final animationValue = Curves.easeOutBack.transform(
+              (_cardController.value - delay).clamp(0.0, 1.0),
+            );
+            final safeOpacity = animationValue.clamp(0.0, 1.0);
+            return Transform.translate(
+              offset: Offset(0, 50 * (1 - animationValue)),
+              child: Opacity(
+                opacity: safeOpacity,
+                child: _buildTaskCard(taskLevels[index], index),
               ),
-            if (photo != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  isBefore
-                      ? 'Location: ${beforePhotoPosition?.latitude.toStringAsFixed(4)}, ${beforePhotoPosition?.longitude.toStringAsFixed(4)}'
-                      : 'Location: ${afterPhotoPosition?.latitude.toStringAsFixed(4)}, ${afterPhotoPosition?.longitude.toStringAsFixed(4)}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[800]),
-                ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTaskCard(TaskLevel task, int index) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 20),
+      child: Stack(
+        children: [
+          // Main Card
+          Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+                colors: task.isUnlocked
+                    ? [task.color.withOpacity(0.8), task.color]
+                    : [Colors.grey[400]!, Colors.grey[600]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+          BoxShadow(
+                  color: task.isUnlocked 
+                      ? task.color.withOpacity(0.3)
+                      : Colors.grey.withOpacity(0.3),
+                  blurRadius: 15,
+                  offset: Offset(0, 8),
+          ),
+        ],
+      ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: task.isUnlocked ? () => _startTask(task) : null,
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+      child: Row(
+        children: [
+                      // Task Icon
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+            child: Center(
+                          child: Text(
+                            task.icon,
+                            style: TextStyle(fontSize: 40),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 20),
+                      
+                      // Task Info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    task.title,
+                  style: TextStyle(
+                                      fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                if (task.isCompleted)
+                                  Container(
+                                    padding: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              task.subtitle,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            Row(
+                              children: [
+                                _buildInfoChip(task.difficulty, Icons.star),
+                                SizedBox(width: 10),
+                                _buildInfoChip(task.estimatedTime, Icons.access_time),
+                              ],
               ),
           ],
         ),
       ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      // Using a gradient for an environmental vibe.
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.green.shade700, Colors.lightGreen.shade400],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ListView(
-              children: [
-                // Anchor header with an eco icon.
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.green.shade800, Colors.green.shade500],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
-                        offset: Offset(0, 4),
-                        blurRadius: 6,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Icon(Icons.eco, color: Colors.white, size: 48),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          'Neighborhood Litter Patrol',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      
+                      // Arrow or Lock
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                    ],
+                        child: Icon(
+                          task.isUnlocked ? Icons.arrow_forward_ios : Icons.lock,
+                    color: Colors.white,
+                          size: 20,
                   ),
                 ),
-                SizedBox(height: 20),
-                // Task description.
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  color: Colors.white.withOpacity(0.9),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Text(
-                      "Task: Take 10–15 minutes for a quick walk around your neighborhood to pick up litter from sidewalks, parks, or near local shops.",
-                      style: TextStyle(fontSize: 16, color: Colors.grey[800]),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12),
-                // Before and After photo sections.
-                _buildPhotoSection("Before Photo", beforePhoto, true),
-                _buildPhotoSection("After Photo", afterPhoto, false),
-                SizedBox(height: 16),
-                // If the task has already been verified, show the verification status.
-                _verificationRecord != null
-                    ? Center(
-                  child: Card(
-                    elevation: 8,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    margin: EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: _verificationRecord!['status'] == 'Not Confirmed'
-                              ? [Colors.deepOrange, Colors.orangeAccent]
-                              : [Colors.lightGreen, Colors.green],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
-                        child: Row(
-                          children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.3),
-                                shape: BoxShape.circle,
-                              ),
-                              padding: EdgeInsets.all(12),
-                              child: Icon(
-                                _verificationRecord!['status'] == 'Not Confirmed'
-                                    ? Icons.hourglass_top
-                                    : Icons.check_circle_outline,
-                                color: Colors.white,
-                                size: 36,
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: Text(
-                                _verificationRecord!['status'] == 'Not Confirmed'
-                                    ? "Verification in Progress!\nOnce verified, points will be added to your piggy bank. Hold tight and keep up the great work!"
-                                    : "Thanks for Completing this Task!\nStay motivated and keep shining in your community.",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-                // Otherwise show a button to mark the task as completed.
-                    : ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[700],
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: isVerifying ? null : () {
-                    if (!taskCompleted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Your progress is under verification please hold tight")),
-                      );
-                      _verifyAndMarkComplete();
-                    }
-                  },
-                  child: Text(
-                    "Mark Task as Completed",
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                ),
-                SizedBox(height: 16),
-                // Display verification waiting note if needed.
-                if (isVerifying)
-                  Center(
-                    child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      color: Colors.white.withOpacity(0.9),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Text(
-                          "Please hold on tight until we verify your progress.",
-                          style: TextStyle(
-                              color: Colors.green[800],
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  )
-                else if (taskCompleted && _verificationRecord == null)
-                  Center(
-                    child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      color: Colors.white.withOpacity(0.9),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Text(
-                          "Great job! You have completed the task.",
-                          style: TextStyle(
-                              color: Colors.green[800],
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ),
               ],
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
+          
+          // Unlock Animation
+          if (!task.isUnlocked && index == currentUnlockedLevel + 1)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.yellow.withOpacity(0.3),
+                      Colors.orange.withOpacity(0.3),
+                    ],
+                  ),
+              ),
+              child: Center(
+                child: Text(
+                    "Complete previous task to unlock!",
+                    style: TextStyle(
+                    color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+            ),
+        ],
       ),
     );
   }
+
+  Widget _buildInfoChip(String text, IconData icon) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.white),
+          SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startTask(TaskLevel task) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => TaskGameWrapper(
+          task: task,
+          onComplete: () => _completeTask(task.id),
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInOut,
+            )),
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class TaskLevel {
+  final int id;
+  final String title;
+  final String subtitle;
+  final String description;
+  final String icon;
+  final Color color;
+  final String difficulty;
+  final String estimatedTime;
+  final Widget gameWidget;
+  bool isUnlocked;
+  bool isCompleted;
+
+  TaskLevel({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.description,
+    required this.icon,
+    required this.color,
+    required this.difficulty,
+    required this.estimatedTime,
+    required this.gameWidget,
+    this.isUnlocked = false,
+    this.isCompleted = false,
+  });
+}
+
+class TaskGameWrapper extends StatelessWidget {
+  final TaskLevel task;
+  final VoidCallback onComplete;
+
+  const TaskGameWrapper({
+    Key? key,
+    required this.task,
+    required this.onComplete,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    Widget gameWidget = task.gameWidget;
+    // Pass onComplete to all supported games
+    if (gameWidget is OceanCleanupGame) {
+      gameWidget = OceanCleanupGame(onComplete: onComplete);
+    } else if (gameWidget is RecyclingSortGame) {
+      gameWidget = RecyclingSortGame(onComplete: onComplete);
+    } else if (gameWidget is PlantGardenGame) {
+      gameWidget = PlantGardenGame(onComplete: onComplete);
+    } else if (gameWidget is EnergySaverGame) {
+      gameWidget = EnergySaverGame(onComplete: onComplete);
+    } else if (gameWidget is WaterConservationGame) {
+      gameWidget = WaterConservationGame(onComplete: onComplete);
+    } else if (gameWidget is EcoCraftGame) {
+      gameWidget = EcoCraftGame(onComplete: onComplete);
+    }
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(task.title),
+        backgroundColor: task.color,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: gameWidget,
+    );
+  }
+}
+
+class FloatingElementsPainter extends CustomPainter {
+  final double animationValue;
+
+  FloatingElementsPainter(this.animationValue);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.green.withOpacity(0.1);
+    
+    for (int i = 0; i < 20; i++) {
+      final x = (size.width * (i / 20) + animationValue * 50) % size.width;
+      final y = (size.height * ((i * 0.7) % 1) + animationValue * 30) % size.height;
+      
+      canvas.drawCircle(
+        Offset(x, y),
+        5 + (i % 3) * 2,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
