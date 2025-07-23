@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ease/localization/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:convert';
@@ -9,6 +10,10 @@ import 'task_games/plant_garden_game.dart';
 import 'task_games/energy_saver_game.dart';
 import 'task_games/water_conservation_game.dart';
 import 'task_games/eco_craft_game.dart';
+import 'task_games/air_pollution_game.dart';
+import 'task_games/wildlife_protection_game.dart';
+import 'task_games/climate_change_game.dart';
+import 'task_games/food_waste_game.dart';
 
 class TaskPage extends StatefulWidget {
   @override
@@ -48,77 +53,126 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
   }
 
   void _initializeTasks() {
+    final localizations = AppLocalizations.of(context)!;
     taskLevels = [
       TaskLevel(
         id: 1,
-        title: "Ocean Hero",
-        subtitle: "Save marine life by cleaning the ocean",
-        description: "Help sea creatures by removing plastic waste from the ocean. Learn about marine pollution!",
+        title: localizations.oceanHero,
+        subtitle: localizations.oceanHeroDesc,
+        description: localizations.oceanHeroDesc,
         icon: "🌊",
         color: Colors.blue,
-        difficulty: "Easy",
+        difficulty: localizations.easy,
         estimatedTime: "5 min",
         gameWidget: OceanCleanupGame(),
         isUnlocked: true,
       ),
       TaskLevel(
         id: 2,
-        title: "Sorting Champion",
-        subtitle: "Master the art of waste separation",
-        description: "Sort different types of waste into correct bins. Become a recycling expert!",
+        title: localizations.sortingChampion,
+        subtitle: localizations.sortingChampionDesc,
+        description: localizations.sortingChampionDesc,
         icon: "♻️",
         color: Colors.green,
-        difficulty: "Easy",
+        difficulty: localizations.easy,
         estimatedTime: "3 min",
         gameWidget: RecyclingSortGame(),
         isUnlocked: false,
       ),
       TaskLevel(
         id: 3,
-        title: "Garden Guardian",
-        subtitle: "Create your own green paradise",
-        description: "Plant seeds, water them, and watch your garden grow. Learn about plant care!",
+        title: localizations.gardenGuardian,
+        subtitle: localizations.gardenGuardianDesc,
+        description: localizations.gardenGuardianDesc,
         icon: "🌱",
         color: Colors.lightGreen,
-        difficulty: "Medium",
+        difficulty: localizations.medium,
         estimatedTime: "7 min",
         gameWidget: PlantGardenGame(),
         isUnlocked: false,
       ),
       TaskLevel(
         id: 4,
-        title: "Energy Detective",
-        subtitle: "Find and fix energy waste",
-        description: "Explore a house and turn off wasteful appliances. Save energy, save the planet!",
+        title: localizations.energyDetective,
+        subtitle: localizations.energyDetectiveDesc,
+        description: localizations.energyDetectiveDesc,
         icon: "⚡",
         color: Colors.amber,
-        difficulty: "Medium",
+        difficulty: localizations.medium,
         estimatedTime: "6 min",
         gameWidget: EnergySaverGame(),
         isUnlocked: false,
       ),
       TaskLevel(
         id: 5,
-        title: "Water Wizard",
-        subtitle: "Protect our precious water resources",
-        description: "Fix leaky pipes and save water drops. Every drop counts!",
+        title: localizations.waterWizard,
+        subtitle: localizations.waterWizardDesc,
+        description: localizations.waterWizardDesc,
         icon: "💧",
         color: Colors.cyan,
-        difficulty: "Medium",
+        difficulty: localizations.medium,
         estimatedTime: "5 min",
         gameWidget: WaterConservationGame(),
         isUnlocked: false,
       ),
       TaskLevel(
         id: 6,
-        title: "Eco Artist",
-        subtitle: "Turn trash into treasure",
-        description: "Create beautiful art from recycled materials. Be creative and eco-friendly!",
+        title: localizations.ecoArtist,
+        subtitle: localizations.ecoArtistDesc,
+        description: localizations.ecoArtistDesc,
         icon: "🎨",
         color: Colors.purple,
-        difficulty: "Hard",
+        difficulty: localizations.hard,
         estimatedTime: "10 min",
         gameWidget: EcoCraftGame(),
+        isUnlocked: false,
+      ),
+      TaskLevel(
+        id: 7,
+        title: "Air Guardian",
+        subtitle: "Clean the air we breathe",
+        description: "Remove pollution sources and plant trees to improve air quality!",
+        icon: "🌬️",
+        color: Colors.lightBlue,
+        difficulty: localizations.medium,
+        estimatedTime: "8 min",
+        gameWidget: AirPollutionGame(),
+        isUnlocked: false,
+      ),
+      TaskLevel(
+        id: 8,
+        title: "Wildlife Protector",
+        subtitle: "Save endangered animals",
+        description: "Protect animals from dangers and help them thrive in their natural habitat!",
+        icon: "🦁",
+        color: Colors.brown,
+        difficulty: localizations.hard,
+        estimatedTime: "12 min",
+        gameWidget: WildlifeProtectionGame(),
+        isUnlocked: false,
+      ),
+      TaskLevel(
+        id: 9,
+        title: "Climate Hero",
+        subtitle: "Fight global warming",
+        description: "Take climate actions to reduce global temperature and save our planet!",
+        icon: "🌍",
+        color: Colors.indigo,
+        difficulty: localizations.hard,
+        estimatedTime: "15 min",
+        gameWidget: ClimateChangeGame(),
+        isUnlocked: false,
+      ),
+      TaskLevel(
+        id: 10,
+        title: "Food Saver",
+        subtitle: "Reduce food waste",
+        description: "Save fresh food and compost old food to reduce waste and help the environment!",
+        icon: "🍽️",
+        color: Colors.orange,
+        difficulty: localizations.medium,
+        estimatedTime: "6 min",
+        gameWidget: FoodWasteGame(),
         isUnlocked: false,
       ),
     ];

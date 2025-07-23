@@ -8,6 +8,8 @@ environment:
 dependencies:
   mime: ^2.0.0
   http: ^1.4.0
+  flutter_localizations:
+    sdk: flutter
   flutter:
     sdk: flutter
   mailer: ^6.4.1

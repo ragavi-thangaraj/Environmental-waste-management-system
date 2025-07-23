@@ -1,6 +1,8 @@
+import 'package:ease/localization/app_localizations.dart';
 import 'package:ease/profile.dart';
 import 'package:ease/task.dart';
 import 'package:ease/wellness2.dart';
+import 'package:ease/widgets/animated_background.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -97,6 +99,7 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return Scaffold(
       // AppBar remains unchanged.
       appBar: AppBar(
@@ -126,18 +129,13 @@ class HomePage extends StatelessWidget {
             final userData =
                 snapshot.data!.data() as Map<String, dynamic>? ?? {};
             String language = userData['language'] ?? "English";
-            Map<String, String> appBarTranslations = {
-              "English": "Our Home",
-              "Tamil": "எங்கள் வீடு",
-              "Hindi": "हमारा घर",
-            };
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.home, color: Colors.green[900], size: 28),
                 const SizedBox(width: 8),
                 Text(
-                  appBarTranslations[language]!,
+                  localizations.home,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
@@ -182,61 +180,15 @@ class HomePage extends StatelessWidget {
           final userData =
               snapshot.data!.data() as Map<String, dynamic>? ?? {};
           String language = userData['language'] ?? "English";
-          Map<String, Map<String, String>> translations = {
-            "English": {
-              "savingEarth": "Saving Earth, One Step at a Time",
-              "subtext": "Take a step today towards a greener future 🌿🌍",
-              "card1Title": "Recycle rather than dump!",
-              "card1Subtitle": "Discover ways to live sustainably.",
-              "card2Title": "Wellness & Environment",
-              "card2Subtitle": "Stay healthy while saving the planet.",
-              "card3Title": "Daily Green Challenge",
-              "card3Subtitle": "A new challenge every day!",
-              "card4Title": "Wellness & Environment",
-              "card4Subtitle": "Stay healthy while saving the planet.",
-            },
-            "Tamil": {
-              "savingEarth": "பூமியை பாதுகாக்க, ஒவ்வொரு படியிலும்",
-              "subtext": "இன்று ஒரு படி முன்னேறி பசுமையான எதிர்காலத்தை நோக்கி",
-              "card1Title": "குப்பையை தூக்காமல் மறுசுழற்சி செய்யுங்கள்!",
-              "card1Subtitle": "சூழல் பாதுகாப்பு வாழ்வு வழிகளை கண்டறியுங்கள்.",
-              "card2Title": "நலம் & சூழல்",
-              "card2Subtitle": "பூமியை பாதுகாக்கும் போது ஆரோக்கியமாக இருங்கள்.",
-              "card3Title": "தினசரி பசுமை சவால்",
-              "card3Subtitle": "ஒவ்வொரு நாளும் ஒரு புதிய சவால்!",
-              "card4Title": "நலம் & சூழல்",
-              "card4Subtitle": "பூமியை பாதுகாக்கும் போது ஆரோக்கியமாக இருங்கள்.",
-            },
-            "Hindi": {
-              "savingEarth": "एक कदम में पृथ्वी बचाएं",
-              "subtext": "आज हरित भविष्य की ओर एक कदम बढ़ाएं",
-              "card1Title": "कचरे को फेंकने के बजाय रिसाइकिल करें!",
-              "card1Subtitle": "सतत जीवन जीने के तरीके खोजें।",
-              "card2Title": "स्वास्थ्य & पर्यावरण",
-              "card2Subtitle": "पृथ्वी बचाते हुए स्वस्थ रहें।",
-              "card3Title": "दैनिक हरित चुनौती",
-              "card3Subtitle": "हर दिन एक नई चुनौती!",
-              "card4Title": "स्वास्थ्य & पर्यावरण",
-              "card4Subtitle": "पृथ्वी बचाते हुए स्वस्थ रहें।",
-            },
-          };
-          Map<String, String> currentTrans = translations[language]!;
-          return Stack(
+          return AnimatedBackground(
+            colors: [
+              Colors.green.shade100,
+              Colors.blue.shade50,
+              Colors.yellow.shade50,
+              Colors.white,
+            ],
+            child: Stack(
             children: [
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage('lib/assets/ease.jpg'),
-                      fit: BoxFit.cover,
-                      colorFilter: ColorFilter.mode(
-                        Colors.white.withOpacity(0.2),
-                        BlendMode.srcOver,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
               SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -247,7 +199,8 @@ class HomePage extends StatelessWidget {
                           horizontal: 16, vertical: 24),
                       child: Column(
                         children: [
-                          CircleAvatar(
+                          PulsingWidget(
+                            child: CircleAvatar(
                             radius: 50,
                             backgroundColor: Colors.white,
                             backgroundImage:
@@ -257,10 +210,11 @@ class HomePage extends StatelessWidget {
                               size: 50,
                               color: Colors.grey,
                             ),
+                            ),
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            currentTrans["savingEarth"]!,
+                            localizations.savingEarth,
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -270,7 +224,7 @@ class HomePage extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            currentTrans["subtext"]!,
+                            localizations.subtext,
                             style: TextStyle(
                                 fontSize: 15, color: Colors.grey[700]),
                             textAlign: TextAlign.center,
@@ -298,43 +252,52 @@ class HomePage extends StatelessWidget {
                             crossAxisSpacing: 16,
                             childAspectRatio: 0.75,
                             children: [
-                              _buildCardWithBackground(
+                              SlideInAnimation(
+                                delay: Duration(milliseconds: 200),
+                                child: _buildCardWithBackground(
                                 context,
                                 _buildFeatureCard(
                                   context,
                                   Icons.eco,
                                   "recycle",
-                                  currentTrans["card1Title"]!,
-                                  currentTrans["card1Subtitle"]!,
+                                  localizations.recycleTitle,
+                                  localizations.recycleSubtitle,
                                   Colors.green[100]!,
                                   Colors.green[800]!,
                                   language,
                                 ),
+                                ),
                               ),
-                              _buildCardWithBackground(
+                              SlideInAnimation(
+                                delay: Duration(milliseconds: 400),
+                                child: _buildCardWithBackground(
                                 context,
                                 _buildFeatureCard(
                                   context,
                                   Icons.track_changes,
                                   "daily",
-                                  currentTrans["card3Title"]!,
-                                  currentTrans["card3Subtitle"]!,
+                                  localizations.dailyChallengeTitle,
+                                  localizations.dailyChallengeSubtitle,
                                   Colors.blue[100]!,
                                   Colors.blue[800]!,
                                   language,
                                 ),
+                                ),
                               ),
-                              _buildCardWithBackground(
+                              SlideInAnimation(
+                                delay: Duration(milliseconds: 600),
+                                child: _buildCardWithBackground(
                                 context,
                                 _buildFeatureCard(
                                   context,
                                   Icons.track_changes,
                                   "wellness2",
-                                  currentTrans["card4Title"]!,
-                                  currentTrans["card4Subtitle"]!,
+                                  localizations.wellnessTitle,
+                                  localizations.wellnessSubtitle,
                                   Colors.green[100]!,
                                   Colors.blue[800]!,
                                   language,
+                                ),
                                 ),
                               ),
                             ],
@@ -347,6 +310,7 @@ class HomePage extends StatelessWidget {
                 ),
               ),
             ],
+            ),
           );
         },
       ),
